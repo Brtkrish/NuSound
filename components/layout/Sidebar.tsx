@@ -52,10 +52,12 @@ export const Sidebar = () => {
             </nav>
 
             <div className="mt-auto space-y-2">
-                <button className="flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-white transition-colors w-full">
-                    <Settings className="w-5 h-5" />
-                    <span>Settings</span>
-                </button>
+                <Link href="/settings">
+                    <button className="flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-white transition-colors w-full">
+                        <Settings className="w-5 h-5" />
+                        <span>Settings</span>
+                    </button>
+                </Link>
                 <Link href="/api/auth/logout">
                     <button className="flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-red-500 transition-colors w-full">
                         <LogOut className="w-5 h-5" />
