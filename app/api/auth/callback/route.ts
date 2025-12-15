@@ -11,7 +11,13 @@ export async function GET(request: Request) {
     }
 
     try {
-        const { access_token, refresh_token, expires_in } = await getAccessToken(code);
+        const tokenResponse = await getAccessToken(code);
+        console.log("Token Response:", tokenResponse);
+        const { access_token, refresh_token, expires_in } = tokenResponse;
+
+        if (!access_token) {
+            return NextResponse.json(tokenResponse, { status: 400 });
+        }
 
         // Create the response object
         const response = NextResponse.redirect(new URL('/', request.url));

@@ -3,8 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { getRecommendations, Track } from '@/lib/data';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedButton } from '@/components/ui/AnimatedButton';
-import { Play, RefreshCw, Plus, Heart } from 'lucide-react';
+import { Play, RefreshCw, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { LikeButton } from '@/components/LikeButton';
+import { AddToPlaylistButton } from '@/components/AddToPlaylistButton';
 
 export default function DiscoverPage() {
     const [tracks, setTracks] = useState<Track[]>([]);
@@ -71,7 +73,11 @@ export default function DiscoverPage() {
     );
 }
 
+import { usePlayer } from '@/components/PlayerProvider';
+
 function RecommendationCard({ track, index }: { track: Track; index: number }) {
+    const { playTrack } = usePlayer();
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -80,9 +86,12 @@ function RecommendationCard({ track, index }: { track: Track; index: number }) {
         >
             <GlassCard className="group flex items-center justify-between hover:bg-white/10 transition-colors">
                 <div className="flex items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden shadow-2xl">
+                    <div
+                        className="relative w-20 h-20 rounded-lg overflow-hidden shadow-2xl cursor-pointer"
+                        onClick={() => playTrack(`spotify:track:${track.id}`)}
+                    >
                         <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Play className="w-8 h-8 text-[#b0fb5d] fill-[#b0fb5d]" />
                         </div>
                     </div>
@@ -94,12 +103,8 @@ function RecommendationCard({ track, index }: { track: Track; index: number }) {
                 </div>
 
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-3 rounded-full hover:bg-white/10 text-gray-400 hover:text-[#b0fb5d] transition-colors">
-                        <Heart size={20} />
-                    </button>
-                    <button className="p-3 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-                        <Plus size={20} />
-                    </button>
+                    <LikeButton trackId={track.id} />
+                    <AddToPlaylistButton trackId={track.id} />
                 </div>
             </GlassCard>
         </motion.div>

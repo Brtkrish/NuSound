@@ -1,10 +1,10 @@
 "use client";
-import React from 'react';
-import { Home, Compass, User, Disc3, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Compass, User, Disc3, Settings, LogOut, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
     { icon: Home, label: 'Home', href: '/' },
@@ -15,10 +15,11 @@ const NAV_ITEMS = [
 
 export const Sidebar = () => {
     const pathname = usePathname();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    return (
-        <aside className="w-64 h-screen fixed left-0 top-0 glass-panel border-r border-white/10 z-50 hidden md:flex flex-col p-6">
-            <div className="flex items-center gap-3 mb-12">
+    const NavContent = () => (
+        <>
+            <div className="flex items-center gap-3 mb-8 md:mb-12">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#b0fb5d] to-[#0affff]" />
                 <h1 className="text-2xl font-bold tracking-tighter">NuSound</h1>
             </div>
@@ -27,7 +28,7 @@ export const Sidebar = () => {
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname === item.href;
                     return (
-                        <Link key={item.href} href={item.href}>
+                        <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
                             <motion.div
                                 className={cn(
                                     "flex items-center gap-4 px-4 py-3 rounded-xl transition-colors relative overflow-hidden",
@@ -50,12 +51,59 @@ export const Sidebar = () => {
                 })}
             </nav>
 
-            <div className="mt-auto">
+            <div className="mt-auto space-y-2">
                 <button className="flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-white transition-colors w-full">
                     <Settings className="w-5 h-5" />
                     <span>Settings</span>
                 </button>
+                <Link href="/api/auth/logout">
+                    <button className="flex items-center gap-4 px-4 py-3 text-gray-400 hover:text-red-500 transition-colors w-full">
+                        <LogOut className="w-5 h-5" />
+                        <span>Sign Out</span>
+                    </button>
+                </Link>
             </div>
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="w-64 h-screen fixed left-0 top-0 glass-panel border-r border-white/10 z-50 hidden md:flex flex-col p-6">
+                <NavContent />
+            </aside>
+
+            {/* Mobile Menu Button */}
+            <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden fixed top-4 left-4 z-50 p-3 glass-panel rounded-xl"
+            >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+                {mobileMenuOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                        />
+                        <motion.aside
+                            initial={{ x: -300 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -300 }}
+                            transition={{ type: "spring", damping: 25 }}
+                            className="md:hidden fixed left-0 top-0 w-72 h-screen glass-panel border-r border-white/10 z-50 flex flex-col p-6"
+                        >
+                            <NavContent />
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+        </>
     );
 };
