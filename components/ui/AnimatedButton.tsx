@@ -9,9 +9,10 @@ interface AnimatedButtonProps {
     variant?: 'primary' | 'secondary' | 'ghost';
     className?: string;
     icon?: ReactNode;
+    disabled?: boolean;
 }
 
-export const AnimatedButton = ({ children, onClick, variant = 'primary', className, icon }: AnimatedButtonProps) => {
+export const AnimatedButton = ({ children, onClick, variant = 'primary', className, icon, disabled = false }: AnimatedButtonProps) => {
     const baseStyles = "px-6 py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-all";
 
     const variants = {
@@ -22,10 +23,11 @@ export const AnimatedButton = ({ children, onClick, variant = 'primary', classNa
 
     return (
         <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
-            className={cn(baseStyles, variants[variant], className)}
+            whileHover={disabled ? {} : { scale: 1.05 }}
+            whileTap={disabled ? {} : { scale: 0.95 }}
+            onClick={disabled ? undefined : onClick}
+            disabled={disabled}
+            className={cn(baseStyles, variants[variant], disabled && "opacity-50 cursor-not-allowed", className)}
         >
             {icon && <span>{icon}</span>}
             {children}
