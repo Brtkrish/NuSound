@@ -27,7 +27,7 @@ export default function LikedSongsPage() {
     const fetchLikedSongs = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/library');
+            const res = await fetch('/api/library', { credentials: 'include' });
             if (res.status === 401) {
                 window.location.href = '/api/auth/login';
                 return;

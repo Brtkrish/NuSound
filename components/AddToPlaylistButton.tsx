@@ -26,7 +26,7 @@ export function AddToPlaylistButton({ trackId }: AddToPlaylistButtonProps) {
 
     const fetchPlaylists = async () => {
         try {
-            const res = await fetch('/api/playlists');
+            const res = await fetch('/api/playlists', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setPlaylists(data);
@@ -43,6 +43,7 @@ export function AddToPlaylistButton({ trackId }: AddToPlaylistButtonProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trackUris: [`spotify:track:${trackId}`] }),
+                credentials: 'include',
             });
 
             if (res.ok) {

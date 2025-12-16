@@ -40,7 +40,7 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/profile');
+            const res = await fetch('/api/profile', { credentials: 'include' });
             if (res.status === 401) {
                 window.location.href = '/api/auth/login';
                 return;

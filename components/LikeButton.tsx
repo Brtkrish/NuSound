@@ -25,6 +25,7 @@ export function LikeButton({ trackId, initialLiked = false }: LikeButtonProps) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trackId }),
+                credentials: 'include',
             });
 
             if (!res.ok) {

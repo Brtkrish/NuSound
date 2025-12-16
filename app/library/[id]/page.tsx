@@ -29,7 +29,7 @@ export default function PlaylistPage({ params }: { params: Promise<{ id: string 
     const fetchPlaylistTracks = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/playlists/${id}`);
+            const res = await fetch(`/api/playlists/${id}`, { credentials: 'include' });
             if (res.status === 401) {
                 window.location.href = '/api/auth/login';
                 return;

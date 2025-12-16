@@ -20,7 +20,7 @@ export default function DiscoverPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/recommendations');
+            const res = await fetch('/api/recommendations', { credentials: 'include' });
             if (res.status === 401) {
                 // Not logged in, redirect to login
                 window.location.href = '/api/auth/login';

@@ -31,8 +31,8 @@ export default function LibraryPage() {
         try {
             // Fetch playlists and liked songs in parallel
             const [playlistsRes, likedRes] = await Promise.all([
-                fetch('/api/playlists'),
-                fetch('/api/library'),
+                fetch('/api/playlists', { credentials: 'include' }),
+                fetch('/api/library', { credentials: 'include' }),
             ]);
 
             if (playlistsRes.status === 401 || likedRes.status === 401) {
