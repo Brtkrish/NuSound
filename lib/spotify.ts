@@ -27,7 +27,6 @@ export const getAuthorizationUrl = () => {
         client_id: client_id!,
         scope: scope,
         redirect_uri: redirect_uri!,
-        show_dialog: 'true',
     });
 
     return `${AUTHORIZATION_ENDPOINT}?${params.toString()}`;
