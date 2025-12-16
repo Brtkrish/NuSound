@@ -25,6 +25,7 @@ export async function GET(request: Request) {
         // Set cookies
         response.headers.append('Set-Cookie', serialize('access_token', access_token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
             path: '/',
             maxAge: expires_in,
             sameSite: 'lax',

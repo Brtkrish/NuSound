@@ -1,10 +1,10 @@
 import { getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
-import { parse } from 'cookie';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
-    const cookies = parse(request.headers.get('cookie') || '');
-    const access_token = cookies.access_token;
+    const cookieStore = await cookies();
+    const access_token = cookieStore.get('access_token')?.value;
 
     if (!access_token) {
         return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
