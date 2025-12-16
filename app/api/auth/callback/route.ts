@@ -23,13 +23,25 @@ export async function GET(request: Request) {
         const response = NextResponse.redirect(new URL('/', request.url));
 
         // Set cookies
-        response.headers.append('Set-Cookie', serialize('access_token', access_token, {
+        const cookieString = serialize('access_token', access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             path: '/',
             maxAge: expires_in,
             sameSite: 'lax',
-        }));
+        });
+
+        console.log('Setting cookie with config:', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            nodeEnv: process.env.NODE_ENV,
+            path: '/',
+            maxAge: expires_in,
+            sameSite: 'lax',
+        });
+        console.log('Cookie string:', cookieString.substring(0, 100) + '...');
+
+        response.headers.append('Set-Cookie', cookieString);
 
         // In a real app we'd also store the refresh token securely
 
