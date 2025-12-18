@@ -21,8 +21,8 @@ export async function GET(request: Request) {
     }
 
     try {
-        // 1. Search for the track
-        const searchRes = await searchTracks(access_token, query, 1);
+        // 1. Search for the tracks
+        const searchRes = await searchTracks(access_token, query, 20);
 
         if (!searchRes.ok) {
             const errorText = await searchRes.text();
@@ -34,22 +34,7 @@ export async function GET(request: Request) {
         console.log('Search Results Count:', searchData.tracks?.items?.length || 0);
 
         if (!searchData.tracks || !searchData.tracks.items || searchData.tracks.items.length === 0) {
-            return NextResponse.json({ tracks: [], related: [] });
-        }
-
-        const mainTrack = searchData.tracks.items[0];
-        const seedTrackId = mainTrack.id;
-
-        // 2. Get recommendations based on this track
-        const recRes = await getRecommendationsBySeeds(access_token, [seedTrackId], 20);
-
-        let relatedTracks = [];
-        if (recRes.ok) {
-            const recData = await recRes.json();
-            relatedTracks = recData.tracks || [];
-        } else {
-            const recError = await recRes.text();
-            console.error('Spotify Recommendations API Error:', recRes.status, recError);
+            return NextResponse.json({ tracks: [] });
         }
 
         const formatTrack = (t: any) => ({
@@ -63,7 +48,6 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             tracks: searchData.tracks.items.map(formatTrack),
-            related: relatedTracks.map(formatTrack),
         });
 
     } catch (error: any) {
