@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { getSessionToken } from '@/lib/spotify-server';
 import { getUserProfile, getTopTracks } from '@/lib/spotify';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedButton } from '@/components/ui/AnimatedButton';
@@ -6,8 +6,7 @@ import { Sparkles, Play, LogIn } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token');
+  const accessToken = await getSessionToken();
 
   let user = null;
   let topTracks = [];
@@ -15,8 +14,8 @@ export default async function Home() {
   if (accessToken) {
     try {
       const [userRes, tracksRes] = await Promise.all([
-        getUserProfile(accessToken.value),
-        getTopTracks(accessToken.value)
+        getUserProfile(accessToken),
+        getTopTracks(accessToken)
       ]);
 
       if (userRes.ok && tracksRes.ok) {

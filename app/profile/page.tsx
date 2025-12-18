@@ -1,12 +1,10 @@
 import React from 'react';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ProfileUI } from '@/components/ProfileUI';
-import { getProfileAction } from '@/lib/spotify-server';
+import { getProfileAction, getSessionToken } from '@/lib/spotify-server';
 
 export default async function ProfilePage() {
-    const cookieStore = await cookies();
-    const access_token = cookieStore.get('access_token')?.value;
+    const access_token = await getSessionToken();
 
     if (!access_token) {
         redirect('/api/auth/login');
@@ -17,7 +15,7 @@ export default async function ProfilePage() {
     let topTracks: any[] = [];
 
     try {
-        const data = await getProfileAction(access_token);
+        const data = await getProfileAction(access_token!);
         profile = data.profile;
         topArtists = data.topArtists;
         topTracks = data.topTracks;

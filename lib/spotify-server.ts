@@ -1,4 +1,26 @@
+import { cookies } from 'next/headers';
 import { getUserPlaylists, getSavedTracks, getUserProfile, getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases, getPlaylistTracks } from './spotify';
+
+/**
+ * Robustly retrieves the Spotify access token from cookies.
+ * Handles decoding from Base64 if using the new 'sp_token' format.
+ */
+export async function getSessionToken() {
+    const cookieStore = await cookies();
+
+    // 1. Try the new sp_token format (Base64 encoded)
+    const sp_token = cookieStore.get('sp_token')?.value;
+    if (sp_token) {
+        try {
+            return Buffer.from(sp_token, 'base64').toString('utf-8');
+        } catch (e) {
+            console.error("Failed to decode sp_token:", e);
+        }
+    }
+
+    // 2. Fallback to legacy access_token for transition period
+    return cookieStore.get('access_token')?.value || null;
+}
 
 export async function getPlaylistsAction(access_token: string) {
     const res = await getUserPlaylists(access_token);

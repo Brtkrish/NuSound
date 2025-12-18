@@ -43,20 +43,21 @@ export default function DebugPage() {
 
                     <div className="space-y-4">
                         <StatusRow
-                            label="Access Token Cookie"
-                            status={debugData?.hasAccessToken ? "Valid Path" : "Missing"}
-                            success={debugData?.hasAccessToken}
+                            label="New Session (sp_token)"
+                            status={debugData?.hasSPToken ? "Found" : "Missing"}
+                            success={debugData?.hasSPToken}
                         />
                         <StatusRow
-                            label="HttpOnly Context"
-                            status={debugData?.rawCookieHeader ? "Active" : "Stripped/Missing"}
-                            success={!!debugData?.rawCookieHeader}
+                            label="Legacy (access_token)"
+                            status={debugData?.hasAccessToken ? "Found" : "Cleared/Missing"}
+                            success={debugData?.hasAccessToken}
                         />
-                        {debugData?.accessTokenValue && (
-                            <div className="text-xs text-gray-500 bg-black/20 p-2 rounded font-mono">
-                                Segment: {debugData.accessTokenValue}
-                            </div>
-                        )}
+                        <div className="text-xs text-gray-500 bg-black/20 p-2 rounded font-mono space-y-1">
+                            <div>Length: {debugData?.tokenLen || "0"} characters</div>
+                            {debugData?.spTokenPreview && (
+                                <div className="text-[#b0fb5d]">Decoded: {debugData.spTokenPreview}</div>
+                            )}
+                        </div>
                     </div>
                 </GlassCard>
 

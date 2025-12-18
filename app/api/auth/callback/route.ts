@@ -26,14 +26,15 @@ export async function GET(request: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
-        console.log(`Setting cookies and preparing redirect to ${cleanAppUrl}`);
-
-        // 2. Use native Next.js cookies() helper (most robust way in Next.js 15)
+        // 2. Use native Next.js cookies() helper
         const cookieStore = await cookies();
         const maxAge = Number(expires_in) || 3600;
 
-        // Set the real token
-        cookieStore.set('access_token', access_token, {
+        // Base64 encode the token to ensure zero special characters break the header
+        const encodedToken = Buffer.from(access_token).toString('base64');
+
+        // Rename the cookie to avoid any potential "reserved name" filters
+        cookieStore.set('sp_token', encodedToken, {
             httpOnly: true,
             secure: true,
             path: '/',
@@ -41,13 +42,18 @@ export async function GET(request: Request) {
             sameSite: 'lax',
         });
 
-        // Set a canary cookie to verify the header is reaching the browser
+        // Set canaries for diagnostic depth
         cookieStore.set('callback_canary', 'active', {
             httpOnly: true,
             secure: true,
             path: '/',
             maxAge: 3600,
             sameSite: 'lax',
+        });
+
+        cookieStore.set('token_len', String(access_token.length), {
+            path: '/',
+            maxAge: 3600,
         });
 
         // HTML payload for "Safe Redirect"
@@ -67,7 +73,6 @@ export async function GET(request: Request) {
                     <div class="loader"></div>
                     <p>Completing login...</p>
                     <script>
-                        console.log("Cookie drop successful. Redirecting...");
                         setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 300);
                     </script>
                 </body>

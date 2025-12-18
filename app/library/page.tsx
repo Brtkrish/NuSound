@@ -1,12 +1,9 @@
-import React from 'react';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LibraryUI } from '@/components/LibraryUI';
-import { getPlaylistsAction, getLikedTracksAction } from '@/lib/spotify-server';
+import { getPlaylistsAction, getLikedTracksAction, getSessionToken } from '@/lib/spotify-server';
 
 export default async function LibraryPage() {
-    const cookieStore = await cookies();
-    const access_token = cookieStore.get('access_token')?.value;
+    const access_token = await getSessionToken();
 
     if (!access_token) {
         redirect('/api/auth/login');
@@ -17,8 +14,8 @@ export default async function LibraryPage() {
 
     try {
         const [playlists, likedTracks] = await Promise.all([
-            getPlaylistsAction(access_token),
-            getLikedTracksAction(access_token, 50)
+            getPlaylistsAction(access_token!),
+            getLikedTracksAction(access_token!)
         ]);
         initialPlaylists = playlists;
         initialLikedCount = likedTracks.length;

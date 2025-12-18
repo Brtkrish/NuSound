@@ -10,10 +10,24 @@ export async function GET() {
     const cleanAppUrl = appUrl.replace(/\/$/, '');
     const response = NextResponse.redirect(`${cleanAppUrl}/`);
 
+    // Clear everything
+    response.cookies.set("sp_token", "", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+    });
+
     response.cookies.set("access_token", "", {
         httpOnly: true,
         secure: true,
         sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+    });
+
+    response.cookies.set("token_len", "", {
         path: "/",
         maxAge: 0,
     });

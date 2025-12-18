@@ -5,19 +5,31 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const cookieStore = await cookies();
+    const sp_token = cookieStore.get('sp_token');
     const access_token = cookieStore.get('access_token');
+    const token_len = cookieStore.get('token_len');
 
-    // Get all cookies
+    // Decode sp_token if present for display
+    let decodedPreview = null;
+    if (sp_token?.value) {
+        try {
+            const decoded = Buffer.from(sp_token.value, 'base64').toString('utf-8');
+            decodedPreview = `${decoded.substring(0, 10)}...`;
+        } catch (e) {
+            decodedPreview = "DECODE_FAILED";
+        }
+    }
+
     const allCookies = cookieStore.getAll();
-
-    // Also check raw cookie header
     const host = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
     const currentUrl = `${protocol}://${host}`;
 
     return NextResponse.json({
+        hasSPToken: !!sp_token,
         hasAccessToken: !!access_token,
-        accessTokenValue: access_token?.value ? `${access_token.value.substring(0, 10)}...` : null,
+        spTokenPreview: decodedPreview,
+        tokenLen: token_len?.value || "Unknown",
         allCookieNames: allCookies.map(c => c.name),
         cookieCount: allCookies.length,
         environment: process.env.NODE_ENV,
