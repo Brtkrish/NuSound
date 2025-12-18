@@ -1,17 +1,11 @@
 import { cookies } from 'next/headers';
 import { getUserPlaylists, getSavedTracks, getUserProfile, getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases, getPlaylistTracks } from './spotify';
 
-/**
- * Robustly retrieves the Spotify access token from cookies.
- * Handles both Single Cookie (small tokens) and Chunked Cookies (large tokens).
- * Also handles Base64 decoding for the new safe storage format.
- */
 export async function getSessionToken() {
     const cookieStore = await cookies();
-
     let rawToken = '';
 
-    // 1. Try to assemble chunked token
+    // 1. Try Chunked Assembly
     const chunkCount = cookieStore.get('sp_token_chunks')?.value;
     if (chunkCount) {
         const count = parseInt(chunkCount, 10);
@@ -20,48 +14,46 @@ export async function getSessionToken() {
             if (chunk) rawToken += chunk;
         }
     } else {
-        // 2. Try single token
+        // 2. Try Single Cookie
         rawToken = cookieStore.get('sp_token')?.value || '';
 
-        // 3. Fallback: try to manually find chunks if count is missing
-        if (!rawToken) {
-            const firstChunk = cookieStore.get('sp_token.0')?.value;
-            if (firstChunk) {
-                rawToken = firstChunk;
-                let nextIndex = 1;
-                while (true) {
-                    const nextChunk = cookieStore.get(`sp_token.${nextIndex}`)?.value;
-                    if (!nextChunk) break;
-                    rawToken += nextChunk;
-                    nextIndex++;
-                }
+        // 3. Fallback: Manual Chunk Scan
+        if (!rawToken && cookieStore.get('sp_token.0')) {
+            let nextIndex = 0;
+            while (true) {
+                const chunk = cookieStore.get(`sp_token.${nextIndex}`)?.value;
+                if (!chunk) break;
+                rawToken += chunk;
+                nextIndex++;
             }
         }
     }
 
-    // 4. Decode the result (since we Base64 encoded it in the callback)
+    // 4. Decode Base64 (The Alignment Fix)
     if (rawToken) {
         try {
-            return Buffer.from(rawToken, 'base64').toString('utf-8');
+            // Check if it's already a valid token (starts with BQ or similar) to avoid double-decoding
+            if (!rawToken.includes('%') && !rawToken.includes(' ')) {
+                return Buffer.from(rawToken, 'base64').toString('utf-8');
+            }
+            // If it looks like URI encoded, try that fallback
+            return decodeURIComponent(rawToken);
         } catch (e) {
-            console.error("Token decoding failed, returning raw", e);
-            return rawToken; // Fallback to raw if it wasn't encoded
+            console.error("Token decoding error:", e);
+            return null;
         }
     }
 
-    // 5. Legacy Fallback
     return cookieStore.get('access_token')?.value || null;
 }
 
-// ---------------------------------------------------------
-// DATA ACTIONS (Restored)
-// ---------------------------------------------------------
+// ... (Keep all your export functions: getPlaylistsAction, getRecommendationsAction, etc. exactly as they were) ...
+// (Do not delete the data functions)
 
 export async function getPlaylistsAction(access_token: string) {
     const res = await getUserPlaylists(access_token);
     if (!res.ok) throw new Error('Failed to fetch playlists');
     const data = await res.json();
-
     return data.items.map((playlist: any) => ({
         id: playlist.id,
         name: playlist.name,
@@ -77,7 +69,6 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
     const res = await getSavedTracks(access_token, limit, 0);
     if (!res.ok) throw new Error('Failed to fetch library');
     const data = await res.json();
-
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,
@@ -89,13 +80,10 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
 }
 
 export async function getRecommendationsAction(access_token: string) {
-    // 1. Get Seeds (Top Tracks)
     const topTracksRes = await getTopTracks(access_token);
     if (!topTracksRes.ok) throw new Error('Failed to fetch seeds');
-
     const topTracksData = await topTracksRes.json();
     if (!topTracksData.items || topTracksData.items.length === 0) {
-        // Fallback to new releases if no top tracks
         const fallbackRes = await getNewReleases(access_token);
         const fallbackData = await fallbackRes.json();
         return fallbackData.albums.items.map((album: any) => ({
@@ -108,11 +96,8 @@ export async function getRecommendationsAction(access_token: string) {
             popularity: 50,
         }));
     }
-
     const allSeedIds = topTracksData.items.map((t: any) => t.artists[0].id);
     const selectedSeeds = allSeedIds.sort(() => 0.5 - Math.random()).slice(0, 3);
-
-    // Graph Expansion
     let artistPool: string[] = [...selectedSeeds];
     await Promise.all(selectedSeeds.map(async (seedId: string) => {
         const relatedRes = await getRelatedArtists(access_token, seedId);
@@ -124,7 +109,6 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
-
     artistPool = Array.from(new Set(artistPool));
     let candidateTracks: any[] = [];
     await Promise.all(artistPool.map(async (artistId) => {
@@ -137,11 +121,9 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
-
     const uniqueTracks = Array.from(new Map(candidateTracks.map(t => [t.id, t])).values());
     const shuffledTracks = uniqueTracks.sort(() => Math.random() - 0.5);
     const selectedTracks = shuffledTracks.slice(0, 20);
-
     return selectedTracks.map((t: any) => ({
         id: t.id,
         title: t.name,
@@ -157,10 +139,8 @@ export async function getProfileAction(access_token: string) {
     const profileRes = await getUserProfile(access_token);
     if (!profileRes.ok) throw new Error('Failed to fetch profile');
     const profile = await profileRes.json();
-
     const topTracksRes = await getTopTracks(access_token);
     const topTracksData = await topTracksRes.json();
-
     return {
         profile,
         topArtists: [],
@@ -178,7 +158,6 @@ export async function getPlaylistTracksAction(access_token: string, playlist_id:
     const res = await getPlaylistTracks(access_token, playlist_id);
     if (!res.ok) throw new Error('Failed to fetch playlist tracks');
     const data = await res.json();
-
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,
