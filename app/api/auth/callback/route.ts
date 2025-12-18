@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
@@ -25,23 +26,29 @@ export async function GET(request: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
-        console.log(`Callback successful. Redirecting to ${cleanAppUrl}`);
+        console.log(`Setting cookies and preparing redirect to ${cleanAppUrl}`);
 
-        // 2. Build the response with manual headers for maximum Vercel compatibility
-        // Some Next.js versions have issues with response.cookies.set during redirects
+        // 2. Use native Next.js cookies() helper (most robust way in Next.js 15)
+        const cookieStore = await cookies();
         const maxAge = Number(expires_in) || 3600;
 
-        // Use encodeURIComponent to ensure no special characters break the header
-        const safeToken = encodeURIComponent(access_token);
+        // Set the real token
+        cookieStore.set('access_token', access_token, {
+            httpOnly: true,
+            secure: true,
+            path: '/',
+            maxAge: maxAge,
+            sameSite: 'lax',
+        });
 
-        const cookieOptions = [
-            `access_token=${safeToken}`,
-            `Max-Age=${maxAge}`,
-            `Path=/`,
-            `HttpOnly`,
-            `Secure`,
-            `SameSite=Lax`
-        ].join('; ');
+        // Set a canary cookie to verify the header is reaching the browser
+        cookieStore.set('callback_canary', 'active', {
+            httpOnly: true,
+            secure: true,
+            path: '/',
+            maxAge: 3600,
+            sameSite: 'lax',
+        });
 
         // HTML payload for "Safe Redirect"
         const html = `
@@ -60,8 +67,8 @@ export async function GET(request: Request) {
                     <div class="loader"></div>
                     <p>Completing login...</p>
                     <script>
-                        // Fallback redirect if meta-refresh fails
-                        setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 500);
+                        console.log("Cookie drop successful. Redirecting...");
+                        setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 300);
                     </script>
                 </body>
             </html>
@@ -71,7 +78,6 @@ export async function GET(request: Request) {
             status: 200, // 200 OK is much more reliable for Set-Cookie than 302
             headers: {
                 'Content-Type': 'text/html',
-                'Set-Cookie': cookieOptions,
                 'Cache-Control': 'no-store, max-age=0',
             },
         });
