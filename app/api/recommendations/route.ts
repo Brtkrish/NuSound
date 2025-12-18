@@ -2,6 +2,8 @@ import { getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases } f
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     const cookieStore = await cookies();
     const access_token = cookieStore.get('access_token')?.value;
@@ -123,7 +125,9 @@ export async function GET(request: Request) {
             popularity: t.popularity,
         }));
 
-        return NextResponse.json(formattedTracks);
+        return NextResponse.json(formattedTracks, {
+            headers: { 'Vary': 'Cookie' }
+        });
     } catch (error: any) {
         console.error("Recommendations API Error:", error);
         return NextResponse.json({ error: error.message, details: error }, { status: 500 });

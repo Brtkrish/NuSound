@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 import { getSavedTracks } from '@/lib/spotify';
 
 export async function GET(request: Request) {

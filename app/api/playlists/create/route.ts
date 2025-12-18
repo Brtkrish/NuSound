@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 import { createPlaylist, getUserProfile } from '@/lib/spotify';
 
 export async function POST(request: Request) {

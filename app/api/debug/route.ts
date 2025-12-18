@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     const cookieStore = await cookies();
     const access_token = cookieStore.get('access_token');
@@ -19,5 +21,7 @@ export async function GET(request: Request) {
         rawCookieHeader: rawCookieHeader,
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),
+    }, {
+        headers: { 'Vary': 'Cookie' }
     });
 }
