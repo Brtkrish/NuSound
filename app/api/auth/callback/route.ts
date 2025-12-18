@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
@@ -18,59 +17,62 @@ export async function GET(request: Request) {
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
-        const cookieStore = await cookies();
-        const maxAge = Number(expires_in) || 3600;
 
-        // 🛡️ HYBRID FIX: Base64 Encode (Safety) + Chunking (Size)
-        const encodedToken = Buffer.from(access_token).toString('base64');
-        const CHUNK_SIZE = 3000; // Safe size under 4KB limit
-        const tokenChunks = [];
-
-        for (let i = 0; i < encodedToken.length; i += CHUNK_SIZE) {
-            tokenChunks.push(encodedToken.slice(i, i + CHUNK_SIZE));
-        }
-
-        // Save Chunks
-        tokenChunks.forEach((chunk, index) => {
-            const cookieName = tokenChunks.length === 1 ? 'sp_token' : `sp_token.${index}`;
-            cookieStore.set(cookieName, chunk, {
-                httpOnly: true, // Secure it again
-                secure: true,
-                path: '/',
-                maxAge: maxAge,
-                sameSite: 'lax',
-            });
-        });
-
-        // Save Count
-        if (tokenChunks.length > 1) {
-            cookieStore.set('sp_token_chunks', String(tokenChunks.length), {
-                httpOnly: true,
-                secure: true,
-                path: '/',
-                maxAge: maxAge,
-                sameSite: 'lax',
-            });
-        }
-
-        // Diagnostic: Save the ORIGINAL length so we know exactly how big it is
-        cookieStore.set('debug_token_len', String(access_token.length), { path: '/', maxAge: 3600 });
-
+        // 1. Prepare the HTML Redirect
         const html = `
             <!DOCTYPE html>
             <html>
                 <head>
                     <title>Authenticating...</title>
                     <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
-                    <style>body { background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }</style>
                 </head>
-                <body><p>Redirecting...</p><script>setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 100);</script></body>
+                <body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;">
+                    <p>Securing session...</p>
+                </body>
             </html>
         `;
 
-        return new NextResponse(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
+        // 2. Create the Response Object FIRST
+        const response = new NextResponse(html, {
+            status: 200,
+            headers: { 'Content-Type': 'text/html' },
+        });
+
+        // 3. Set Cookies DIRECTLY on the response (Bypasses some Vercel stripping issues)
+        const maxAge = Number(expires_in) || 3600;
+        const encodedToken = Buffer.from(access_token).toString('base64');
+        const CHUNK_SIZE = 1000; // Keep it tiny!
+
+        // Chunking Logic
+        for (let i = 0; i < encodedToken.length; i += CHUNK_SIZE) {
+            const chunk = encodedToken.slice(i, i + CHUNK_SIZE);
+            const name = encodedToken.length <= CHUNK_SIZE ? 'sp_token' : `sp_token.${Math.floor(i / CHUNK_SIZE)}`;
+
+            response.cookies.set(name, chunk, {
+                httpOnly: false, // Keep false for now so you can verify
+                secure: true,
+                path: '/',
+                maxAge: maxAge,
+                sameSite: 'lax',
+            });
+        }
+
+        // Save Count
+        const totalChunks = Math.ceil(encodedToken.length / CHUNK_SIZE);
+        if (totalChunks > 1) {
+            response.cookies.set('sp_token_chunks', String(totalChunks), {
+                httpOnly: false,
+                secure: true,
+                path: '/',
+                maxAge: maxAge,
+                sameSite: 'lax',
+            });
+        }
+
+        return response;
 
     } catch (error) {
+        console.error("Auth Error:", error);
         return NextResponse.json({ error: 'Auth failed' }, { status: 500 });
     }
 }
