@@ -213,12 +213,15 @@ export const searchTracks = async (access_token: string, query: string, limit: n
     });
 }
 
-export const getRecommendationsBySeeds = async (access_token: string, seedTracks: string[], limit: number = 20) => {
+export const getRecommendationsBySeeds = async (access_token: string, seedTracks: string[], seedArtists: string[] = [], limit: number = 20) => {
     const params = new URLSearchParams({
         seed_tracks: seedTracks.join(','),
         limit: limit.toString(),
-        min_popularity: '0',
+        market: 'from_token',
     });
+    if (seedArtists.length > 0) {
+        params.append('seed_artists', seedArtists.join(','));
+    }
     return fetch(`https://api.spotify.com/v1/recommendations?${params.toString()}`, {
         cache: 'no-store',
         headers: {

@@ -11,7 +11,9 @@ interface Track {
     id: string;
     title: string;
     artist: string;
+    artistId: string;
     album: string;
+
     coverUrl: string;
     popularity: number;
 }
@@ -176,8 +178,9 @@ function ExpandableTrackCard({ track, index, onPlay }: { track: Track; index: nu
     const fetchRecommendations = async () => {
         setLoadingRecs(true);
         try {
-            const res = await fetch(`/api/recommendations/seed?trackId=${track.id}`);
+            const res = await fetch(`/api/recommendations/seed?trackId=${track.id}&artistId=${track.artistId}`);
             if (res.ok) {
+
                 const data = await res.json();
                 setRecommendations(data);
             } else {

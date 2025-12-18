@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const trackId = searchParams.get('trackId');
+    const artistId = searchParams.get('artistId');
 
     if (!trackId) {
         return NextResponse.json({ error: 'trackId required' }, { status: 400 });
@@ -18,7 +19,9 @@ export async function GET(request: Request) {
     }
 
     try {
-        const recRes = await getRecommendationsBySeeds(access_token, [trackId], 10);
+        console.log('Fetching recommendations for seeds:', { trackId, artistId });
+        const seedArtists = artistId ? [artistId] : [];
+        const recRes = await getRecommendationsBySeeds(access_token, [trackId], seedArtists, 10);
 
         if (!recRes.ok) {
             const errorText = await recRes.text();
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
         }
 
         const recData = await recRes.json();
+        console.log('Recommendations received count:', recData.tracks?.length || 0);
 
         const formatTrack = (t: any) => ({
             id: t.id,

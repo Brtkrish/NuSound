@@ -41,6 +41,7 @@ export async function GET(request: Request) {
             id: t.id,
             title: t.name,
             artist: t.artists[0]?.name || 'Unknown Artist',
+            artistId: t.artists[0]?.id || '',
             album: t.album?.name || 'Unknown Album',
             coverUrl: t.album?.images?.[0]?.url || '',
             popularity: t.popularity || 0,
