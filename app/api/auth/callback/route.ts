@@ -18,60 +18,76 @@ export async function GET(request: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
-        // 1. Prepare HTML Redirect
+        // 🟢 FIX: PREPARE DATA FOR CLIENT-SIDE SAVING
+        // We do NOT set headers here. We pass the data to the browser via HTML.
+        const encodedToken = Buffer.from(access_token).toString('base64');
+        const maxAge = Number(expires_in) || 3600;
+
         const html = `
             <!DOCTYPE html>
             <html>
                 <head>
                     <title>Authenticating...</title>
-                    <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
+                    <style>
+                        body { background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+                        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: #1DB954; border-radius: 50%; animation: rotation 1s linear infinite; margin-bottom: 20px; }
+                        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
                 </head>
-                <body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;">
-                    <p>Securing session...</p>
+                <body>
+                    <span class="loader"></span>
+                    <p>Finalizing secure session...</p>
+                    
+                    <script>
+                        // 🟢 CLIENT-SIDE COOKIE LOGIC
+                        // This runs in your browser, bypassing Vercel's header limits.
+                        
+                        const token = "${encodedToken}";
+                        const maxAge = ${maxAge};
+                        const CHUNK_SIZE = 1500;
+                        
+                        function setCookie(name, value) {
+                            // "Lax" is fine here because we are technically on the same site now (the callback page)
+                            document.cookie = name + "=" + value + "; path=/; max-age=" + maxAge + "; secure; samesite=lax";
+                        }
+
+                        try {
+                            // 1. Chunk the token
+                            const chunks = [];
+                            for (let i = 0; i < token.length; i += CHUNK_SIZE) {
+                                chunks.push(token.slice(i, i + CHUNK_SIZE));
+                            }
+
+                            // 2. Save Chunks
+                            chunks.forEach((chunk, index) => {
+                                const name = chunks.length === 1 ? 'sp_token' : ('sp_token.' + index);
+                                setCookie(name, chunk);
+                            });
+
+                            // 3. Save Count
+                            if (chunks.length > 1) {
+                                setCookie('sp_token_chunks', chunks.length);
+                            }
+
+                            // 4. Redirect to Home
+                            console.log("Cookies saved. Redirecting...");
+                            setTimeout(() => {
+                                window.location.href = "${cleanAppUrl}/";
+                            }, 500);
+                            
+                        } catch (e) {
+                            console.error("Cookie Error:", e);
+                            document.body.innerHTML = "<p style='color:red'>Browser Error: " + e.message + "</p>";
+                        }
+                    </script>
                 </body>
             </html>
         `;
 
-        // 2. Create Response
-        const response = new NextResponse(html, {
+        return new NextResponse(html, {
             status: 200,
             headers: { 'Content-Type': 'text/html' },
         });
-
-        // 3. Set Cookies (Base64 + SameSite='None')
-        const maxAge = Number(expires_in) || 3600;
-
-        // 🟢 FIX: Use Base64 (Standard) to match the Reader
-        const encodedToken = Buffer.from(access_token).toString('base64');
-        const CHUNK_SIZE = 1500;
-
-        // Chunking Logic
-        for (let i = 0; i < encodedToken.length; i += CHUNK_SIZE) {
-            const chunk = encodedToken.slice(i, i + CHUNK_SIZE);
-            const name = encodedToken.length <= CHUNK_SIZE ? 'sp_token' : `sp_token.${Math.floor(i / CHUNK_SIZE)}`;
-
-            response.cookies.set(name, chunk, {
-                httpOnly: false, // Visible for debugging
-                secure: true,    // Required for SameSite=None
-                path: '/',
-                maxAge: maxAge,
-                sameSite: 'none', // Critical for redirect persistence
-            });
-        }
-
-        // Save Count
-        const totalChunks = Math.ceil(encodedToken.length / CHUNK_SIZE);
-        if (totalChunks > 1) {
-            response.cookies.set('sp_token_chunks', String(totalChunks), {
-                httpOnly: false,
-                secure: true,
-                path: '/',
-                maxAge: maxAge,
-                sameSite: 'none',
-            });
-        }
-
-        return response;
 
     } catch (error) {
         console.error("Auth Error:", error);
