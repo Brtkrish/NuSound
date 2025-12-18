@@ -1,28 +1,24 @@
 import { cookies } from 'next/headers';
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis'; // 🟢 CHANGED
 import { getUserPlaylists, getSavedTracks, getUserProfile, getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases, getPlaylistTracks } from './spotify';
 
-// Define the shape of our session data
-interface SessionData {
-    access_token: string;
-    refresh_token?: string;
-}
-
-/**
- * Retrieves the Spotify access token from Vercel KV using the session_id cookie.
- */
 export async function getSessionToken() {
     const cookieStore = await cookies();
 
-    // 1. Get the tiny Session ID from the browser
+    // 1. Get Session ID
     const sessionId = cookieStore.get('session_id')?.value;
     if (!sessionId) return null;
 
-    // 2. Ask "nusound" database for the actual token
-    try {
-        const session = await kv.get<SessionData>(`session:${sessionId}`);
+    // 2. Connect to Redis
+    if (!process.env.REDIS_URL) return null;
 
-        if (session && session.access_token) {
+    try {
+        const redis = new Redis(process.env.REDIS_URL);
+        const rawSession = await redis.get(`session:${sessionId}`);
+        await redis.quit(); // Close immediately
+
+        if (rawSession) {
+            const session = JSON.parse(rawSession);
             return session.access_token;
         }
     } catch (error) {
@@ -32,15 +28,14 @@ export async function getSessionToken() {
     return null;
 }
 
-// -----------------------------------------------------------------------------
+// ---------------------------------------------------------
 // DATA ACTIONS (Keep these exactly as they are)
-// -----------------------------------------------------------------------------
+// ---------------------------------------------------------
 
 export async function getPlaylistsAction(access_token: string) {
     const res = await getUserPlaylists(access_token);
     if (!res.ok) throw new Error('Failed to fetch playlists');
     const data = await res.json();
-
     return data.items.map((playlist: any) => ({
         id: playlist.id,
         name: playlist.name,
@@ -56,7 +51,6 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
     const res = await getSavedTracks(access_token, limit, 0);
     if (!res.ok) throw new Error('Failed to fetch library');
     const data = await res.json();
-
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,
@@ -70,7 +64,6 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
 export async function getRecommendationsAction(access_token: string) {
     const topTracksRes = await getTopTracks(access_token);
     if (!topTracksRes.ok) throw new Error('Failed to fetch seeds');
-
     const topTracksData = await topTracksRes.json();
     if (!topTracksData.items || topTracksData.items.length === 0) {
         const fallbackRes = await getNewReleases(access_token);
@@ -85,10 +78,8 @@ export async function getRecommendationsAction(access_token: string) {
             popularity: 50,
         }));
     }
-
     const allSeedIds = topTracksData.items.map((t: any) => t.artists[0].id);
     const selectedSeeds = allSeedIds.sort(() => 0.5 - Math.random()).slice(0, 3);
-
     let artistPool: string[] = [...selectedSeeds];
     await Promise.all(selectedSeeds.map(async (seedId: string) => {
         const relatedRes = await getRelatedArtists(access_token, seedId);
@@ -100,7 +91,6 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
-
     artistPool = Array.from(new Set(artistPool));
     let candidateTracks: any[] = [];
     await Promise.all(artistPool.map(async (artistId) => {
@@ -113,11 +103,9 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
-
     const uniqueTracks = Array.from(new Map(candidateTracks.map(t => [t.id, t])).values());
     const shuffledTracks = uniqueTracks.sort(() => Math.random() - 0.5);
     const selectedTracks = shuffledTracks.slice(0, 20);
-
     return selectedTracks.map((t: any) => ({
         id: t.id,
         title: t.name,
@@ -133,10 +121,8 @@ export async function getProfileAction(access_token: string) {
     const profileRes = await getUserProfile(access_token);
     if (!profileRes.ok) throw new Error('Failed to fetch profile');
     const profile = await profileRes.json();
-
     const topTracksRes = await getTopTracks(access_token);
     const topTracksData = await topTracksRes.json();
-
     return {
         profile,
         topArtists: [],
@@ -154,7 +140,6 @@ export async function getPlaylistTracksAction(access_token: string, playlist_id:
     const res = await getPlaylistTracks(access_token, playlist_id);
     if (!res.ok) throw new Error('Failed to fetch playlist tracks');
     const data = await res.json();
-
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis'; // 🟢 CHANGED
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
@@ -21,21 +21,24 @@ export async function GET(request: Request) {
             return NextResponse.json(tokenResponse, { status: 400 });
         }
 
-        // 1. Generate a tiny Session ID (e.g., "550e8400-e29b...")
+        // 1. Generate Session ID
         const sessionId = uuidv4();
 
-        // 2. Save the BIG token to your "nusound" KV Database
-        // We set it to expire automatically when the token expires (3600 seconds)
-        const sessionData = {
-            access_token,
-            refresh_token,
-        };
+        // 2. Connect to Redis using the REDIS_URL you already have
+        if (!process.env.REDIS_URL) {
+            throw new Error("REDIS_URL is missing from Environment Variables");
+        }
+        const redis = new Redis(process.env.REDIS_URL);
 
-        // This line talks to Vercel KV automatically using environment variables
-        await kv.set(`session:${sessionId}`, sessionData, { ex: expires_in || 3600 });
+        // 3. Save Session
+        const sessionData = JSON.stringify({ access_token, refresh_token });
+        // 'EX' means expire in seconds
+        await redis.set(`session:${sessionId}`, sessionData, 'EX', expires_in || 3600);
 
-        // 3. Save ONLY the tiny Session ID in the user's browser cookie
-        // This is tiny (~36 bytes) so it will NEVER be blocked by Vercel
+        // Close connection to keep Vercel happy
+        await redis.quit();
+
+        // 4. Save Cookie
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
         const cookieStore = await cookies();
@@ -48,27 +51,22 @@ export async function GET(request: Request) {
             sameSite: 'lax',
         });
 
-        // 4. Redirect to Home
+        // 5. Redirect
         const html = `
             <!DOCTYPE html>
             <html>
-                <head>
-                    <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
-                    <title>Redirecting...</title>
-                </head>
-                <body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
-                    <p>Secure login successful...</p>
-                </body>
+                <head><meta http-equiv="refresh" content="0;url=${cleanAppUrl}/"></head>
+                <body style="background:#000;color:#fff;"><p>Login successful...</p></body>
             </html>
         `;
 
-        return new NextResponse(html, {
-            status: 200,
-            headers: { 'Content-Type': 'text/html' },
-        });
+        return new NextResponse(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
 
-    } catch (error) {
-        console.error("KV Auth Error:", error);
-        return NextResponse.json({ error: 'Auth failed' }, { status: 500 });
+    } catch (error: any) {
+        console.error("Redis Auth Error:", error);
+        return NextResponse.json({
+            error: 'Auth failed',
+            details: error.message
+        }, { status: 500 });
     }
 }
