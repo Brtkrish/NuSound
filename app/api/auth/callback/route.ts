@@ -1,8 +1,10 @@
+export const dynamic = 'force-dynamic';
+
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
+    const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
 
     if (!code) {
@@ -11,41 +13,47 @@ export async function GET(request: Request) {
 
     try {
         const tokenResponse = await getAccessToken(code);
-        const { access_token, refresh_token, expires_in } = tokenResponse;
+        const { access_token, expires_in } = tokenResponse;
 
         if (!access_token) {
             console.error("Token exchange failed:", tokenResponse);
             return NextResponse.json(tokenResponse, { status: 400 });
         }
 
-        // 1. Determine app URL with protocol safety
-        let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // 1. Determine redirect destination
+        // Use origin of current request to ensure cookie domain matches perfectly
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+        const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
-        // Ensure appUrl has protocol
-        if (!appUrl.startsWith('http')) {
-            appUrl = `https://${appUrl}`;
-        }
+        console.log(`Callback successful. Redirecting to ${cleanAppUrl}`);
 
-        // Remove trailing slash to prevent double slashes
-        const cleanAppUrl = appUrl.replace(/\/$/, '');
-        console.log(`Redirecting to: ${cleanAppUrl}/ after successful login`);
+        // 2. Build the response with manual headers for maximum Vercel compatibility
+        // Some Next.js versions have issues with response.cookies.set during redirects
+        const maxAge = Number(expires_in) || 3600;
 
-        const response = NextResponse.redirect(`${cleanAppUrl}/`);
+        // Construct standard Set-Cookie string
+        const cookieOptions = [
+            `access_token=${access_token}`,
+            `Max-Age=${maxAge}`,
+            `Path=/`,
+            `HttpOnly`,
+            `Secure`,
+            `SameSite=Lax`
+        ].join('; ');
 
-        // 2. Set cookies with broad compatibility
-        // SameSite=Lax is standard for first-party session cookies
-        // SameSite=None is often blocked by browsers unless specifically needed for cross-site
-        response.cookies.set('access_token', access_token, {
-            httpOnly: true,
-            secure: true, // Required for sameSite: 'none' or 'lax' over HTTPS
-            path: '/',
-            maxAge: Number(expires_in) || 3600,
-            sameSite: 'lax',
+        return new NextResponse(null, {
+            status: 302,
+            headers: {
+                'Location': `${cleanAppUrl}/`,
+                'Set-Cookie': cookieOptions,
+                'Cache-Control': 'no-store, max-age=0',
+            },
         });
-
-        return response;
     } catch (error) {
         console.error("Callback error:", error);
-        return NextResponse.json({ error: 'Failed to authenticate', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+        return NextResponse.json({
+            error: 'Authentication failed',
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 });
     }
 }

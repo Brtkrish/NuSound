@@ -11,17 +11,23 @@ export async function GET(request: Request) {
     const allCookies = cookieStore.getAll();
 
     // Also check raw cookie header
-    const rawCookieHeader = request.headers.get('cookie');
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const currentUrl = `${protocol}://${host}`;
 
     return NextResponse.json({
         hasAccessToken: !!access_token,
-        accessTokenValue: access_token?.value ? `${access_token.value.substring(0, 20)}...` : null,
+        accessTokenValue: access_token?.value ? `${access_token.value.substring(0, 10)}...` : null,
         allCookieNames: allCookies.map(c => c.name),
         cookieCount: allCookies.length,
-        rawCookieHeader: rawCookieHeader,
         environment: process.env.NODE_ENV,
+        host: host,
+        appUrlEnv: process.env.NEXT_PUBLIC_APP_URL || 'Not Set',
+        currentUrl: currentUrl,
+        match: process.env.NEXT_PUBLIC_APP_URL === currentUrl ? "YES" : "NO",
         timestamp: new Date().toISOString(),
+        rawHeaders: Array.from(request.headers.keys()).filter(k => !k.includes('auth') && !k.includes('cookie')),
     }, {
-        headers: { 'Vary': 'Cookie' }
+        headers: { 'Vary': 'Cookie', 'Cache-Control': 'no-store' }
     });
 }

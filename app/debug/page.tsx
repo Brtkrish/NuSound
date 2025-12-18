@@ -68,12 +68,42 @@ export default function DebugPage() {
 
                     <div className="space-y-4">
                         <StatusRow label="Runtime Mode" status={debugData?.environment || "Unknown"} success={true} />
-                        <StatusRow label="Current Time" status={new Date(debugData?.timestamp).toLocaleTimeString()} success={true} />
                         <StatusRow
-                            label="Cookie Persistence"
-                            status={debugData?.cookieCount > 0 ? `${debugData.cookieCount} Cookies` : "None"}
-                            success={debugData?.cookieCount > 0}
+                            label="Domain Match"
+                            status={debugData?.match === "YES" ? "Correct" : "MISMATCH"}
+                            success={debugData?.match === "YES"}
                         />
+                        <div className="text-[10px] space-y-1 bg-black/20 p-2 rounded break-all font-mono opacity-80">
+                            <div>Detected: {debugData?.currentUrl}</div>
+                            <div>Configured: {debugData?.appUrlEnv}</div>
+                        </div>
+                    </div>
+                </GlassCard>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+                <GlassCard className="p-6 border-blue-500/30">
+                    <div className="flex items-center gap-3 mb-4">
+                        <RefreshCw className="text-blue-400" />
+                        <h2 className="text-xl font-bold">Cookie Persistence Test</h2>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Verify if your browser can save ANY cookie on this domain.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <a
+                            href="/api/debug/test-cookie?action=set"
+                            target="_blank"
+                            className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg text-blue-300 text-sm text-center border border-blue-500/30"
+                        >
+                            1. Set Test Cookie
+                        </a>
+                        <button
+                            onClick={fetchData}
+                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-center border border-white/10"
+                        >
+                            2. Refresh & Verify Below
+                        </button>
                     </div>
                 </GlassCard>
             </div>
