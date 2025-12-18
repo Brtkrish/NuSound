@@ -7,13 +7,14 @@ export async function GET(request: Request) {
     const action = searchParams.get('action');
 
     if (action === 'set') {
-        const response = new NextResponse(JSON.stringify({ message: "Test cookie set. Please refresh this page." }), {
+        const response = new NextResponse(JSON.stringify({ message: "Test cookies set. Please refresh diagnostic page." }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
 
         // Use the most standard cookie setting possible
         response.headers.append('Set-Cookie', 'debug_test=active; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600');
+        response.headers.append('Set-Cookie', 'access_token_test=mock_value; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600');
 
         return response;
     }

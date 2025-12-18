@@ -31,9 +31,11 @@ export async function GET(request: Request) {
         // Some Next.js versions have issues with response.cookies.set during redirects
         const maxAge = Number(expires_in) || 3600;
 
-        // Construct standard Set-Cookie string
+        // Use encodeURIComponent to ensure no special characters break the header
+        const safeToken = encodeURIComponent(access_token);
+
         const cookieOptions = [
-            `access_token=${access_token}`,
+            `access_token=${safeToken}`,
             `Max-Age=${maxAge}`,
             `Path=/`,
             `HttpOnly`,
@@ -41,10 +43,34 @@ export async function GET(request: Request) {
             `SameSite=Lax`
         ].join('; ');
 
-        return new NextResponse(null, {
-            status: 302,
+        // HTML payload for "Safe Redirect"
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Authenticating...</title>
+                    <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
+                    <style>
+                        body { background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #b0fb5d; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-right: 12px; }
+                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
+                </head>
+                <body>
+                    <div class="loader"></div>
+                    <p>Completing login...</p>
+                    <script>
+                        // Fallback redirect if meta-refresh fails
+                        setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 500);
+                    </script>
+                </body>
+            </html>
+        `;
+
+        return new NextResponse(html, {
+            status: 200, // 200 OK is much more reliable for Set-Cookie than 302
             headers: {
-                'Location': `${cleanAppUrl}/`,
+                'Content-Type': 'text/html',
                 'Set-Cookie': cookieOptions,
                 'Cache-Control': 'no-store, max-age=0',
             },
