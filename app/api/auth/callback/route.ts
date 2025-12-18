@@ -21,17 +21,20 @@ export async function GET(request: Request) {
         const cookieStore = await cookies();
         const maxAge = Number(expires_in) || 3600;
 
-        // 🟢 DEBUG MODE: httpOnly set to FALSE so you can see it in diagnostics
-        const CHUNK_SIZE = 3000;
+        // 🛡️ HYBRID FIX: Base64 Encode (Safety) + Chunking (Size)
+        const encodedToken = Buffer.from(access_token).toString('base64');
+        const CHUNK_SIZE = 3000; // Safe size under 4KB limit
         const tokenChunks = [];
-        for (let i = 0; i < access_token.length; i += CHUNK_SIZE) {
-            tokenChunks.push(access_token.slice(i, i + CHUNK_SIZE));
+
+        for (let i = 0; i < encodedToken.length; i += CHUNK_SIZE) {
+            tokenChunks.push(encodedToken.slice(i, i + CHUNK_SIZE));
         }
 
+        // Save Chunks
         tokenChunks.forEach((chunk, index) => {
             const cookieName = tokenChunks.length === 1 ? 'sp_token' : `sp_token.${index}`;
             cookieStore.set(cookieName, chunk, {
-                httpOnly: false, // <--- CHANGED TO FALSE FOR DEBUGGING
+                httpOnly: true, // Secure it again
                 secure: true,
                 path: '/',
                 maxAge: maxAge,
@@ -39,9 +42,10 @@ export async function GET(request: Request) {
             });
         });
 
+        // Save Count
         if (tokenChunks.length > 1) {
             cookieStore.set('sp_token_chunks', String(tokenChunks.length), {
-                httpOnly: false,
+                httpOnly: true,
                 secure: true,
                 path: '/',
                 maxAge: maxAge,
@@ -49,7 +53,7 @@ export async function GET(request: Request) {
             });
         }
 
-        // Diagnostic length
+        // Diagnostic: Save the ORIGINAL length so we know exactly how big it is
         cookieStore.set('debug_token_len', String(access_token.length), { path: '/', maxAge: 3600 });
 
         const html = `
