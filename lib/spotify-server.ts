@@ -3,23 +3,52 @@ import { getUserPlaylists, getSavedTracks, getUserProfile, getTopTracks, getRela
 
 /**
  * Robustly retrieves the Spotify access token from cookies.
- * Handles decoding from Base64 if using the new 'sp_token' format.
+ * Handles both Single Cookie (small tokens) and Chunked Cookies (large tokens).
  */
 export async function getSessionToken() {
     const cookieStore = await cookies();
 
-    // 1. Try the new sp_token format (Base64 encoded)
-    const sp_token = cookieStore.get('sp_token')?.value;
-    if (sp_token) {
-        try {
-            return Buffer.from(sp_token, 'base64').toString('utf-8');
-        } catch (e) {
-            console.error("Failed to decode sp_token:", e);
+    // 1. Check for Chunked Tokens (created if token > 4KB)
+    // We look for a "count" cookie or try to find the first chunk
+    const chunkCount = cookieStore.get('sp_token_chunks')?.value;
+
+    if (chunkCount) {
+        let fullToken = '';
+        const count = parseInt(chunkCount, 10);
+        for (let i = 0; i < count; i++) {
+            const chunk = cookieStore.get(`sp_token.${i}`)?.value;
+            if (chunk) fullToken += chunk;
         }
+        if (fullToken) return fullToken;
     }
 
-    // 2. Fallback to legacy access_token for transition period
-    return cookieStore.get('access_token')?.value || null;
+    // 2. Fallback to Standard Single Cookie (Raw)
+    // (Note: We no longer Base64 decode, as the new callback saves raw text)
+    const sp_token = cookieStore.get('sp_token')?.value;
+    if (sp_token) {
+        return sp_token;
+    }
+
+    // 3. Last Resort: Legacy or fallback names
+    const legacyToken = cookieStore.get('access_token')?.value;
+    if (legacyToken) return legacyToken;
+
+    // Check for 'sp_token.0' manually if the 'chunks' cookie was missing but chunks exist
+    const firstChunk = cookieStore.get('sp_token.0')?.value;
+    if (firstChunk) {
+        // Try to recover loosely if the count cookie is missing
+        let recoveredToken = firstChunk;
+        let nextIndex = 1;
+        while (true) {
+            const nextChunk = cookieStore.get(`sp_token.${nextIndex}`)?.value;
+            if (!nextChunk) break;
+            recoveredToken += nextChunk;
+            nextIndex++;
+        }
+        return recoveredToken;
+    }
+
+    return null;
 }
 
 export async function getPlaylistsAction(access_token: string) {

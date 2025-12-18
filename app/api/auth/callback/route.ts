@@ -21,73 +21,71 @@ export async function GET(request: Request) {
             return NextResponse.json(tokenResponse, { status: 400 });
         }
 
-        // 1. Determine redirect destination
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
-
-        // 2. Use native Next.js cookies() helper
         const cookieStore = await cookies();
         const maxAge = Number(expires_in) || 3600;
 
-        // 🟢 FIX: Save raw token. Do NOT Base64 encode (it causes size bloat > 4096 bytes)
-        cookieStore.set('sp_token', access_token, {
-            httpOnly: true,
-            secure: true,
-            path: '/',
-            maxAge: maxAge,
-            sameSite: 'lax',
+        // 🟢 FIX: Chunking Logic
+        // Split token if it's too large for a single cookie (4KB limit)
+        const CHUNK_SIZE = 3000; // Safe size (leaving room for overhead)
+        const tokenChunks = [];
+
+        for (let i = 0; i < access_token.length; i += CHUNK_SIZE) {
+            tokenChunks.push(access_token.slice(i, i + CHUNK_SIZE));
+        }
+
+        // Save chunks
+        tokenChunks.forEach((chunk, index) => {
+            const cookieName = tokenChunks.length === 1 ? 'sp_token' : `sp_token.${index}`;
+            cookieStore.set(cookieName, chunk, {
+                httpOnly: true,
+                secure: true,
+                path: '/',
+                maxAge: maxAge,
+                sameSite: 'lax',
+            });
         });
 
-        // Set canaries for diagnostic depth
-        cookieStore.set('callback_canary', 'active', {
-            httpOnly: true,
-            secure: true,
+        // 🟢 Save Count: Tell the frontend how many chunks to look for
+        if (tokenChunks.length > 1) {
+            cookieStore.set('sp_token_chunks', String(tokenChunks.length), {
+                httpOnly: false, // Accessible to JS if needed
+                secure: true,
+                path: '/',
+                maxAge: maxAge,
+                sameSite: 'lax',
+            });
+        }
+
+        // Diagnostic: Save the length so we know exactly how big it is
+        cookieStore.set('debug_token_len', String(access_token.length), {
             path: '/',
             maxAge: 3600,
-            sameSite: 'lax',
         });
 
-        cookieStore.set('token_len', String(access_token.length), {
-            path: '/',
-            maxAge: 3600,
-        });
-
-        // HTML payload for "Safe Redirect" technique
-        // (Ensures cookies are set before the redirect happens)
         const html = `
             <!DOCTYPE html>
             <html>
                 <head>
                     <title>Authenticating...</title>
                     <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
-                    <style>
-                        body { background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #b0fb5d; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-right: 12px; }
-                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    </style>
+                    <style>body { background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }</style>
                 </head>
                 <body>
-                    <div class="loader"></div>
-                    <p>Completing login...</p>
-                    <script>
-                        setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 300);
-                    </script>
+                    <p>Login complete. Redirecting...</p>
+                    <script>setTimeout(() => { window.location.href = "${cleanAppUrl}/"; }, 100);</script>
                 </body>
             </html>
         `;
 
         return new NextResponse(html, {
             status: 200,
-            headers: {
-                'Content-Type': 'text/html',
-                'Cache-Control': 'no-store, max-age=0',
-            },
+            headers: { 'Content-Type': 'text/html' },
         });
+
     } catch (error) {
         console.error("Callback error:", error);
-        return NextResponse.json({
-            error: 'Authentication failed',
-            details: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+        return NextResponse.json({ error: 'Auth failed' }, { status: 500 });
     }
 }
