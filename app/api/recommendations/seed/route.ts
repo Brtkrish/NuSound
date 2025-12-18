@@ -37,7 +37,7 @@ export async function GET(request: Request) {
             popularity: t.popularity || 0,
         });
 
-        return NextResponse.json(recData.tracks.map(formatTrack));
+        return NextResponse.json((recData.tracks || []).map(formatTrack));
 
     } catch (error: any) {
         console.error('Recommendations API error:', error);

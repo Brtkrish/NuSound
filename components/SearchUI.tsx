@@ -61,7 +61,8 @@ export function SearchUI() {
     };
 
     return (
-        <div className="p-8 md:p-12 max-w-7xl mx-auto min-h-screen pb-32">
+        <div className="px-4 py-8 md:p-12 max-w-7xl mx-auto min-h-screen pb-32">
+
             {/* Header / Search Bar */}
             <div className="flex flex-col gap-8 mb-12">
                 <motion.div
@@ -179,9 +180,12 @@ function ExpandableTrackCard({ track, index, onPlay }: { track: Track; index: nu
             if (res.ok) {
                 const data = await res.json();
                 setRecommendations(data);
+            } else {
+                const err = await res.text();
+                console.error('Failed to fetch recommendations:', res.status, err);
             }
         } catch (error) {
-            console.error('Failed to fetch recommendations:', error);
+            console.error('Failed to fetch recommendations error:', error);
         } finally {
             setLoadingRecs(false);
         }
@@ -213,22 +217,22 @@ function ExpandableTrackCard({ track, index, onPlay }: { track: Track; index: nu
                         <p className="text-gray-400 font-medium truncate">{track.artist}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                        <div className="flex items-center scale-90 sm:scale-100">
                             <LikeButton trackId={track.id} />
                             <AddToPlaylistButton trackId={track.id} />
                         </div>
 
                         <button
                             onClick={toggleExpand}
-                            className={`p-3 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${isExpanded
+                            className={`p-2 sm:p-3 rounded-full flex items-center gap-2 text-xs sm:text-sm font-bold transition-all ${isExpanded
                                 ? 'bg-[#b0fb5d] text-black shadow-[0_0_20px_rgba(176,251,93,0.3)]'
                                 : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                                 }`}
                         >
-                            <Sparkles size={18} className={isExpanded ? 'animate-pulse' : ''} />
-                            <span className="hidden sm:inline">{isExpanded ? 'Showing Similar' : 'Show Similar'}</span>
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            <Sparkles size={16} className={isExpanded ? 'animate-pulse' : ''} />
+                            <span className="hidden lg:inline">{isExpanded ? 'Showing Similar' : 'Show Similar'}</span>
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                     </div>
                 </div>
@@ -256,6 +260,10 @@ function ExpandableTrackCard({ track, index, onPlay }: { track: Track; index: nu
                                         {[...Array(3)].map((_, i) => (
                                             <div key={i} className="h-16 rounded-xl bg-white/5 animate-pulse" />
                                         ))}
+                                    </div>
+                                ) : recommendations.length === 0 ? (
+                                    <div className="text-center py-4 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                        <p className="text-gray-500 text-sm italic">NuSound couldn't find similar vibes for this track yet.</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
