@@ -18,8 +18,7 @@ export async function GET(request: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
-        // 🟢 FIX: PREPARE DATA FOR CLIENT-SIDE SAVING
-        // We do NOT set headers here. We pass the data to the browser via HTML.
+        // Prepare data for client-side saving
         const encodedToken = Buffer.from(access_token).toString('base64');
         const maxAge = Number(expires_in) || 3600;
 
@@ -39,37 +38,32 @@ export async function GET(request: Request) {
                     <p>Finalizing secure session...</p>
                     
                     <script>
-                        // 🟢 CLIENT-SIDE COOKIE LOGIC
-                        // This runs in your browser, bypassing Vercel's header limits.
-                        
+                        // 🟢 FIX: Encode chunks to handle Base64 '=' characters safely
                         const token = "${encodedToken}";
                         const maxAge = ${maxAge};
                         const CHUNK_SIZE = 1500;
                         
                         function setCookie(name, value) {
-                            // "Lax" is fine here because we are technically on the same site now (the callback page)
-                            document.cookie = name + "=" + value + "; path=/; max-age=" + maxAge + "; secure; samesite=lax";
+                            // We use encodeURIComponent to ensure the '=' in Base64 doesn't break the cookie format
+                            const safeValue = encodeURIComponent(value);
+                            document.cookie = name + "=" + safeValue + "; path=/; max-age=" + maxAge + "; secure; samesite=lax";
                         }
 
                         try {
-                            // 1. Chunk the token
                             const chunks = [];
                             for (let i = 0; i < token.length; i += CHUNK_SIZE) {
                                 chunks.push(token.slice(i, i + CHUNK_SIZE));
                             }
 
-                            // 2. Save Chunks
                             chunks.forEach((chunk, index) => {
                                 const name = chunks.length === 1 ? 'sp_token' : ('sp_token.' + index);
                                 setCookie(name, chunk);
                             });
 
-                            // 3. Save Count
                             if (chunks.length > 1) {
                                 setCookie('sp_token_chunks', chunks.length);
                             }
 
-                            // 4. Redirect to Home
                             console.log("Cookies saved. Redirecting...");
                             setTimeout(() => {
                                 window.location.href = "${cleanAppUrl}/";

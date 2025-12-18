@@ -10,12 +10,14 @@ export async function getSessionToken() {
     if (chunkCount) {
         const count = parseInt(chunkCount, 10);
         for (let i = 0; i < count; i++) {
+            // 🟢 FIX: Decode the URI component (handles the %3D from the client script)
             const chunk = cookieStore.get(`sp_token.${i}`)?.value;
-            if (chunk) rawToken += chunk;
+            if (chunk) rawToken += decodeURIComponent(chunk);
         }
     } else {
         // 2. Try Single Cookie
-        rawToken = cookieStore.get('sp_token')?.value || '';
+        const val = cookieStore.get('sp_token')?.value;
+        if (val) rawToken = decodeURIComponent(val);
 
         // 3. Fallback: Manual Chunk Scan
         if (!rawToken && cookieStore.get('sp_token.0')) {
@@ -23,21 +25,18 @@ export async function getSessionToken() {
             while (true) {
                 const chunk = cookieStore.get(`sp_token.${nextIndex}`)?.value;
                 if (!chunk) break;
-                rawToken += chunk;
+                rawToken += decodeURIComponent(chunk);
                 nextIndex++;
             }
         }
     }
 
-    // 4. Decode Base64 (The Alignment Fix)
+    // 4. Decode Base64 (Final Step)
     if (rawToken) {
         try {
-            // Check if it's already a valid token (starts with BQ or similar) to avoid double-decoding
-            if (!rawToken.includes('%') && !rawToken.includes(' ')) {
-                return Buffer.from(rawToken, 'base64').toString('utf-8');
-            }
-            // If it looks like URI encoded, try that fallback
-            return decodeURIComponent(rawToken);
+            // Clean up any remaining URI encoding if double-encoded
+            if (rawToken.includes('%')) rawToken = decodeURIComponent(rawToken);
+            return Buffer.from(rawToken, 'base64').toString('utf-8');
         } catch (e) {
             console.error("Token decoding error:", e);
             return null;
@@ -46,7 +45,6 @@ export async function getSessionToken() {
 
     return cookieStore.get('access_token')?.value || null;
 }
-
 // ... (Keep all your export functions: getPlaylistsAction, getRecommendationsAction, etc. exactly as they were) ...
 // (Do not delete the data functions)
 
