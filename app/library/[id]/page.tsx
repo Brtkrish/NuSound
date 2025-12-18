@@ -17,8 +17,7 @@ export default async function PlaylistPage({ params }: { params: Promise<{ id: s
     let tracks = [];
     try {
         const res = await fetch(`${appUrl}/api/playlists/${id}`, {
-            headers: { Cookie: `access_token=${access_token}` },
-            next: { revalidate: 0 }
+            cache: 'no-store'
         });
 
         if (res.ok) {

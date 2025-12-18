@@ -16,8 +16,7 @@ export default async function LikedSongsPage() {
     let tracks = [];
     try {
         const res = await fetch(`${appUrl}/api/library`, {
-            headers: { Cookie: `access_token=${access_token}` },
-            next: { revalidate: 0 }
+            cache: 'no-store'
         });
 
         if (res.ok) {

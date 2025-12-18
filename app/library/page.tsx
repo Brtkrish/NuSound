@@ -18,14 +18,8 @@ export default async function LibraryPage() {
 
     try {
         const [playlistsRes, likedRes] = await Promise.all([
-            fetch(`${appUrl}/api/playlists`, {
-                headers: { Cookie: `access_token=${access_token}` },
-                next: { revalidate: 0 }
-            }),
-            fetch(`${appUrl}/api/library`, {
-                headers: { Cookie: `access_token=${access_token}` },
-                next: { revalidate: 0 }
-            })
+            fetch(`${appUrl}/api/playlists`, { cache: 'no-store' }),
+            fetch(`${appUrl}/api/library`, { cache: 'no-store' })
         ]);
 
         if (playlistsRes.ok) initialPlaylists = await playlistsRes.json();

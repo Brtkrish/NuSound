@@ -18,10 +18,7 @@ export default async function DiscoverPage() {
     let initialTracks = [];
     try {
         const res = await fetch(`${appUrl}/api/recommendations`, {
-            headers: {
-                Cookie: `access_token=${access_token}`
-            },
-            next: { revalidate: 0 } // Ensure fresh data
+            cache: 'no-store'
         });
 
         if (res.ok) {

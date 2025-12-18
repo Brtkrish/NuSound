@@ -19,8 +19,7 @@ export default async function ProfilePage() {
 
     try {
         const res = await fetch(`${appUrl}/api/profile`, {
-            headers: { Cookie: `access_token=${access_token}` },
-            next: { revalidate: 0 }
+            cache: 'no-store'
         });
 
         if (res.ok) {
