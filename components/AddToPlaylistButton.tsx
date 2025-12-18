@@ -72,7 +72,7 @@ export function AddToPlaylistButton({ trackId }: AddToPlaylistButtonProps) {
                     <>
                         {/* Backdrop */}
                         <div
-                            className="fixed inset-0 z-40"
+                            className="fixed inset-0 z-[65]"
                             onClick={() => setIsOpen(false)}
                         />
 
@@ -81,7 +81,7 @@ export function AddToPlaylistButton({ trackId }: AddToPlaylistButtonProps) {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="absolute right-0 top-full mt-2 w-64 glass-panel rounded-xl p-2 z-50 max-h-80 overflow-y-auto"
+                            className="absolute right-0 top-full mt-2 w-64 glass-panel rounded-xl p-2 z-[70] max-h-80 overflow-y-auto"
                         >
                             {playlists.length === 0 ? (
                                 <div className="px-4 py-3 text-sm text-gray-400 text-center">

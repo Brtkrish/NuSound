@@ -71,14 +71,14 @@ export const Sidebar = () => {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="w-64 h-screen fixed left-0 top-0 glass-panel border-r border-white/10 z-50 hidden md:flex flex-col p-6">
+            <aside className="w-64 h-screen fixed left-0 top-0 glass-panel border-r border-white/10 z-[60] hidden md:flex flex-col p-6">
                 <NavContent />
             </aside>
 
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden fixed top-4 left-4 z-50 p-3 glass-panel rounded-xl"
+                className="md:hidden fixed top-4 left-4 z-[60] p-3 glass-panel rounded-xl"
             >
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -92,14 +92,14 @@ export const Sidebar = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setMobileMenuOpen(false)}
-                            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
                         />
                         <motion.aside
                             initial={{ x: -300 }}
                             animate={{ x: 0 }}
                             exit={{ x: -300 }}
                             transition={{ type: "spring", damping: 25 }}
-                            className="md:hidden fixed left-0 top-0 w-72 h-screen glass-panel border-r border-white/10 z-50 flex flex-col p-6"
+                            className="md:hidden fixed left-0 top-0 w-72 h-screen glass-panel border-r border-white/10 z-[60] flex flex-col p-6"
                         >
                             <NavContent />
                         </motion.aside>
