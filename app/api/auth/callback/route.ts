@@ -25,19 +25,19 @@ export async function GET(request: Request) {
         // Set cookies
         const cookieString = serialize('access_token', access_token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true,
             path: '/',
             maxAge: expires_in,
-            sameSite: 'lax',
+            sameSite: 'none',
         });
 
         console.log('Setting cookie with config:', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true,
             nodeEnv: process.env.NODE_ENV,
             path: '/',
             maxAge: expires_in,
-            sameSite: 'lax',
+            sameSite: 'none',
         });
         console.log('Cookie string:', cookieString.substring(0, 100) + '...');
 
