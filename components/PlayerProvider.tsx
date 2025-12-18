@@ -9,7 +9,7 @@ interface PlayerContextType {
     isPaused: boolean;
     currentTrack: any;
     isActive: boolean;
-    playTrack: (uri: string) => Promise<void>;
+    playTrack: (uris: string | string[]) => Promise<void>;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -79,7 +79,7 @@ export const PlayerProvider = ({ children, token }: { children: ReactNode; token
         };
     }, [token]);
 
-    const playTrack = async (uri: string) => {
+    const playTrack = async (uris: string | string[]) => {
         if (!deviceId) {
             console.error("Device ID not ready");
             return;
@@ -90,9 +90,11 @@ export const PlayerProvider = ({ children, token }: { children: ReactNode; token
             return;
         }
 
+        const body = Array.isArray(uris) ? { uris } : { uris: [uris] };
+
         await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
             method: 'PUT',
-            body: JSON.stringify({ uris: [uri] }),
+            body: JSON.stringify(body),
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`

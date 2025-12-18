@@ -16,6 +16,7 @@ interface DiscoverUIProps {
 export function DiscoverUI({ initialTracks }: DiscoverUIProps) {
     const [tracks, setTracks] = useState<Track[]>(initialTracks);
     const [loading, setLoading] = useState(false);
+    const { playTrack } = usePlayer();
 
     const fetchData = async () => {
         setLoading(true);
@@ -54,16 +55,22 @@ export function DiscoverUI({ initialTracks }: DiscoverUIProps) {
             {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {tracks.map((track, index) => (
-                    <RecommendationCard key={track.id} track={track} index={index} />
+                    <RecommendationCard
+                        key={track.id}
+                        track={track}
+                        index={index}
+                        onPlay={() => {
+                            const trackUris = tracks.slice(index).map(t => `spotify:track:${t.id}`);
+                            playTrack(trackUris);
+                        }}
+                    />
                 ))}
             </div>
         </div>
     );
 }
 
-function RecommendationCard({ track, index }: { track: Track; index: number }) {
-    const { playTrack } = usePlayer();
-
+function RecommendationCard({ track, index, onPlay }: { track: Track; index: number; onPlay: () => void }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -74,7 +81,7 @@ function RecommendationCard({ track, index }: { track: Track; index: number }) {
                 <div className="flex items-center gap-4 min-w-0">
                     <div
                         className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shadow-2xl cursor-pointer flex-shrink-0"
-                        onClick={() => playTrack(`spotify:track:${track.id}`)}
+                        onClick={onPlay}
                     >
                         <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

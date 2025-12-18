@@ -197,3 +197,32 @@ export const getPlaylistTracks = async (access_token: string, playlist_id: strin
         },
     });
 }
+
+// 6. Search & Recommendations
+export const searchTracks = async (access_token: string, query: string, limit: number = 5) => {
+    const params = new URLSearchParams({
+        q: query,
+        type: 'track',
+        limit: limit.toString(),
+    });
+    return fetch(`https://api.spotify.com/v1/search?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+            Authorization: `Bearer ${access_token}`,
+        },
+    });
+}
+
+export const getRecommendationsBySeeds = async (access_token: string, seedTracks: string[], limit: number = 20) => {
+    const params = new URLSearchParams({
+        seed_tracks: seedTracks.join(','),
+        limit: limit.toString(),
+        min_popularity: '0',
+    });
+    return fetch(`https://api.spotify.com/v1/recommendations?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+            Authorization: `Bearer ${access_token}`,
+        },
+    });
+}

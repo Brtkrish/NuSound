@@ -49,7 +49,15 @@ export function PlaylistUI({ tracks }: PlaylistUIProps) {
             ) : (
                 <div className="space-y-2">
                     {tracks.map((track, index) => (
-                        <TrackRow key={track.id} track={track} index={index} onPlay={() => playTrack(`spotify:track:${track.id}`)} />
+                        <TrackRow
+                            key={track.id}
+                            track={track}
+                            index={index}
+                            onPlay={() => {
+                                const trackUris = tracks.slice(index).map(t => `spotify:track:${t.id}`);
+                                playTrack(trackUris);
+                            }}
+                        />
                     ))}
                 </div>
             )}

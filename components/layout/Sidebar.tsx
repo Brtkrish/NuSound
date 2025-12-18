@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { Home, Compass, User, Disc3, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Home, Compass, Search, User, Disc3, Settings, LogOut, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
     { icon: Home, label: 'Home', href: '/' },
+    { icon: Search, label: 'Search', href: '/search' },
     { icon: Compass, label: 'Discover', href: '/discover' },
     { icon: Disc3, label: 'Library', href: '/library' },
     { icon: User, label: 'Profile', href: '/profile' },

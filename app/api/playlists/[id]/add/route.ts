@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSessionToken } from '@/lib/spotify-server';
 import { addTracksToPlaylist } from '@/lib/spotify';
 
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const cookieStore = await cookies();
-    const access_token = cookieStore.get('access_token')?.value;
+    const access_token = await getSessionToken();
 
     if (!access_token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

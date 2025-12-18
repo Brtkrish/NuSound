@@ -1,12 +1,10 @@
-import { getLikedTracksAction } from '@/lib/spotify-server';
+import { getLikedTracksAction, getSessionToken } from '@/lib/spotify-server';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-    const cookieStore = await cookies();
-    const access_token = cookieStore.get('access_token')?.value;
+    const access_token = await getSessionToken();
 
     if (!access_token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
