@@ -2,6 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { kv } from '@vercel/kv';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
@@ -11,69 +14,50 @@ export async function GET(request: Request) {
 
     try {
         const tokenResponse = await getAccessToken(code);
-        const { access_token, expires_in } = tokenResponse;
+        const { access_token, expires_in, refresh_token } = tokenResponse;
 
-        if (!access_token) return NextResponse.json(tokenResponse, { status: 400 });
+        if (!access_token) {
+            console.error("Token exchange failed:", tokenResponse);
+            return NextResponse.json(tokenResponse, { status: 400 });
+        }
 
+        // 1. Generate a tiny Session ID (e.g., "550e8400-e29b...")
+        const sessionId = uuidv4();
+
+        // 2. Save the BIG token to your "nusound" KV Database
+        // We set it to expire automatically when the token expires (3600 seconds)
+        const sessionData = {
+            access_token,
+            refresh_token,
+        };
+
+        // This line talks to Vercel KV automatically using environment variables
+        await kv.set(`session:${sessionId}`, sessionData, { ex: expires_in || 3600 });
+
+        // 3. Save ONLY the tiny Session ID in the user's browser cookie
+        // This is tiny (~36 bytes) so it will NEVER be blocked by Vercel
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
+        const cookieStore = await cookies();
 
-        // Prepare data for client-side saving
-        const encodedToken = Buffer.from(access_token).toString('base64');
-        const maxAge = Number(expires_in) || 3600;
+        cookieStore.set('session_id', sessionId, {
+            httpOnly: true,
+            secure: true,
+            path: '/',
+            maxAge: expires_in || 3600,
+            sameSite: 'lax',
+        });
 
+        // 4. Redirect to Home
         const html = `
             <!DOCTYPE html>
             <html>
                 <head>
-                    <title>Authenticating...</title>
-                    <style>
-                        body { background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-                        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: #1DB954; border-radius: 50%; animation: rotation 1s linear infinite; margin-bottom: 20px; }
-                        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    </style>
+                    <meta http-equiv="refresh" content="0;url=${cleanAppUrl}/">
+                    <title>Redirecting...</title>
                 </head>
-                <body>
-                    <span class="loader"></span>
-                    <p>Finalizing secure session...</p>
-                    
-                    <script>
-                        // 🟢 FIX: Encode chunks to handle Base64 '=' characters safely
-                        const token = "${encodedToken}";
-                        const maxAge = ${maxAge};
-                        const CHUNK_SIZE = 1500;
-                        
-                        function setCookie(name, value) {
-                            // We use encodeURIComponent to ensure the '=' in Base64 doesn't break the cookie format
-                            const safeValue = encodeURIComponent(value);
-                            document.cookie = name + "=" + safeValue + "; path=/; max-age=" + maxAge + "; secure; samesite=lax";
-                        }
-
-                        try {
-                            const chunks = [];
-                            for (let i = 0; i < token.length; i += CHUNK_SIZE) {
-                                chunks.push(token.slice(i, i + CHUNK_SIZE));
-                            }
-
-                            chunks.forEach((chunk, index) => {
-                                const name = chunks.length === 1 ? 'sp_token' : ('sp_token.' + index);
-                                setCookie(name, chunk);
-                            });
-
-                            if (chunks.length > 1) {
-                                setCookie('sp_token_chunks', chunks.length);
-                            }
-
-                            console.log("Cookies saved. Redirecting...");
-                            setTimeout(() => {
-                                window.location.href = "${cleanAppUrl}/";
-                            }, 500);
-                            
-                        } catch (e) {
-                            console.error("Cookie Error:", e);
-                            document.body.innerHTML = "<p style='color:red'>Browser Error: " + e.message + "</p>";
-                        }
-                    </script>
+                <body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
+                    <p>Secure login successful...</p>
                 </body>
             </html>
         `;
@@ -84,7 +68,7 @@ export async function GET(request: Request) {
         });
 
     } catch (error) {
-        console.error("Auth Error:", error);
+        console.error("KV Auth Error:", error);
         return NextResponse.json({ error: 'Auth failed' }, { status: 500 });
     }
 }

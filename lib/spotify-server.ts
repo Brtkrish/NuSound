@@ -1,57 +1,46 @@
 import { cookies } from 'next/headers';
+import { kv } from '@vercel/kv';
 import { getUserPlaylists, getSavedTracks, getUserProfile, getTopTracks, getRelatedArtists, getArtistTopTracks, getNewReleases, getPlaylistTracks } from './spotify';
 
+// Define the shape of our session data
+interface SessionData {
+    access_token: string;
+    refresh_token?: string;
+}
+
+/**
+ * Retrieves the Spotify access token from Vercel KV using the session_id cookie.
+ */
 export async function getSessionToken() {
     const cookieStore = await cookies();
-    let rawToken = '';
 
-    // 1. Try Chunked Assembly
-    const chunkCount = cookieStore.get('sp_token_chunks')?.value;
-    if (chunkCount) {
-        const count = parseInt(chunkCount, 10);
-        for (let i = 0; i < count; i++) {
-            // 🟢 FIX: Decode the URI component (handles the %3D from the client script)
-            const chunk = cookieStore.get(`sp_token.${i}`)?.value;
-            if (chunk) rawToken += decodeURIComponent(chunk);
-        }
-    } else {
-        // 2. Try Single Cookie
-        const val = cookieStore.get('sp_token')?.value;
-        if (val) rawToken = decodeURIComponent(val);
+    // 1. Get the tiny Session ID from the browser
+    const sessionId = cookieStore.get('session_id')?.value;
+    if (!sessionId) return null;
 
-        // 3. Fallback: Manual Chunk Scan
-        if (!rawToken && cookieStore.get('sp_token.0')) {
-            let nextIndex = 0;
-            while (true) {
-                const chunk = cookieStore.get(`sp_token.${nextIndex}`)?.value;
-                if (!chunk) break;
-                rawToken += decodeURIComponent(chunk);
-                nextIndex++;
-            }
+    // 2. Ask "nusound" database for the actual token
+    try {
+        const session = await kv.get<SessionData>(`session:${sessionId}`);
+
+        if (session && session.access_token) {
+            return session.access_token;
         }
+    } catch (error) {
+        console.error("Redis Read Error:", error);
     }
 
-    // 4. Decode Base64 (Final Step)
-    if (rawToken) {
-        try {
-            // Clean up any remaining URI encoding if double-encoded
-            if (rawToken.includes('%')) rawToken = decodeURIComponent(rawToken);
-            return Buffer.from(rawToken, 'base64').toString('utf-8');
-        } catch (e) {
-            console.error("Token decoding error:", e);
-            return null;
-        }
-    }
-
-    return cookieStore.get('access_token')?.value || null;
+    return null;
 }
-// ... (Keep all your export functions: getPlaylistsAction, getRecommendationsAction, etc. exactly as they were) ...
-// (Do not delete the data functions)
+
+// -----------------------------------------------------------------------------
+// DATA ACTIONS (Keep these exactly as they are)
+// -----------------------------------------------------------------------------
 
 export async function getPlaylistsAction(access_token: string) {
     const res = await getUserPlaylists(access_token);
     if (!res.ok) throw new Error('Failed to fetch playlists');
     const data = await res.json();
+
     return data.items.map((playlist: any) => ({
         id: playlist.id,
         name: playlist.name,
@@ -67,6 +56,7 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
     const res = await getSavedTracks(access_token, limit, 0);
     if (!res.ok) throw new Error('Failed to fetch library');
     const data = await res.json();
+
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,
@@ -80,6 +70,7 @@ export async function getLikedTracksAction(access_token: string, limit = 50) {
 export async function getRecommendationsAction(access_token: string) {
     const topTracksRes = await getTopTracks(access_token);
     if (!topTracksRes.ok) throw new Error('Failed to fetch seeds');
+
     const topTracksData = await topTracksRes.json();
     if (!topTracksData.items || topTracksData.items.length === 0) {
         const fallbackRes = await getNewReleases(access_token);
@@ -94,8 +85,10 @@ export async function getRecommendationsAction(access_token: string) {
             popularity: 50,
         }));
     }
+
     const allSeedIds = topTracksData.items.map((t: any) => t.artists[0].id);
     const selectedSeeds = allSeedIds.sort(() => 0.5 - Math.random()).slice(0, 3);
+
     let artistPool: string[] = [...selectedSeeds];
     await Promise.all(selectedSeeds.map(async (seedId: string) => {
         const relatedRes = await getRelatedArtists(access_token, seedId);
@@ -107,6 +100,7 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
+
     artistPool = Array.from(new Set(artistPool));
     let candidateTracks: any[] = [];
     await Promise.all(artistPool.map(async (artistId) => {
@@ -119,9 +113,11 @@ export async function getRecommendationsAction(access_token: string) {
             }
         }
     }));
+
     const uniqueTracks = Array.from(new Map(candidateTracks.map(t => [t.id, t])).values());
     const shuffledTracks = uniqueTracks.sort(() => Math.random() - 0.5);
     const selectedTracks = shuffledTracks.slice(0, 20);
+
     return selectedTracks.map((t: any) => ({
         id: t.id,
         title: t.name,
@@ -137,8 +133,10 @@ export async function getProfileAction(access_token: string) {
     const profileRes = await getUserProfile(access_token);
     if (!profileRes.ok) throw new Error('Failed to fetch profile');
     const profile = await profileRes.json();
+
     const topTracksRes = await getTopTracks(access_token);
     const topTracksData = await topTracksRes.json();
+
     return {
         profile,
         topArtists: [],
@@ -156,6 +154,7 @@ export async function getPlaylistTracksAction(access_token: string, playlist_id:
     const res = await getPlaylistTracks(access_token, playlist_id);
     if (!res.ok) throw new Error('Failed to fetch playlist tracks');
     const data = await res.json();
+
     return (data.items || []).map((item: any) => ({
         id: item.track.id,
         title: item.track.name,
