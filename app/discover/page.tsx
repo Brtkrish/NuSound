@@ -1,112 +1,35 @@
-"use client";
-import React, { useEffect, useState } from 'react';
-import { getRecommendations, Track } from '@/lib/data';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { AnimatedButton } from '@/components/ui/AnimatedButton';
-import { Play, RefreshCw, Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { LikeButton } from '@/components/LikeButton';
-import { AddToPlaylistButton } from '@/components/AddToPlaylistButton';
+import React from 'react';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { DiscoverUI } from '@/components/DiscoverUI';
 
-export default function DiscoverPage() {
-    const [tracks, setTracks] = useState<Track[]>([]);
-    const [loading, setLoading] = useState(true);
+export default async function DiscoverPage() {
+    const cookieStore = await cookies();
+    const access_token = cookieStore.get('access_token')?.value;
 
-    // Simulate fetching data on mount
-    useEffect(() => {
-        fetchData();
-    }, []);
+    if (!access_token) {
+        redirect('/api/auth/login');
+    }
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/recommendations', { credentials: 'include' });
-            if (res.status === 401) {
-                // Not logged in, redirect to login
-                window.location.href = '/api/auth/login';
-                return;
-            }
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                setTracks(data);
-            } else {
-                console.error("API returned invalid data format:", data);
-                setTracks([]);
-            }
-        } catch (e) {
-            console.error(e);
+    // Fetch initial data server-side
+    // Using absolute URL to ensure it works in all environments
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    let initialTracks = [];
+    try {
+        const res = await fetch(`${appUrl}/api/recommendations`, {
+            headers: {
+                Cookie: `access_token=${access_token}`
+            },
+            next: { revalidate: 0 } // Ensure fresh data
+        });
+
+        if (res.ok) {
+            initialTracks = await res.json();
         }
-        setLoading(false);
-    };
+    } catch (e) {
+        console.error("Failed to fetch server-side recommendations:", e);
+    }
 
-    return (
-        <div className="p-8 md:p-12 max-w-7xl mx-auto min-h-screen">
-
-            {/* Header */}
-            <div className="flex items-center justify-between mb-12">
-                <div>
-                    <h1 className="text-4xl md:text-5xl font-bold mb-2">
-                        Fresh <span className="gradient-text">Finds</span>
-                    </h1>
-                    <p className="text-gray-400">Curated based on your hidden taste profile.</p>
-                </div>
-                <AnimatedButton onClick={fetchData} variant="secondary" icon={<RefreshCw className={loading ? "animate-spin" : ""} size={18} />}>
-                    Refresh
-                </AnimatedButton>
-            </div>
-
-            {/* Grid */}
-            {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="glass-panel h-32 rounded-2xl animate-pulse bg-white/5" />
-                    ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {tracks.map((track, index) => (
-                        <RecommendationCard key={track.id} track={track} index={index} />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-import { usePlayer } from '@/components/PlayerProvider';
-
-function RecommendationCard({ track, index }: { track: Track; index: number }) {
-    const { playTrack } = usePlayer();
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-        >
-            <GlassCard className="group flex items-center justify-between hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-4">
-                    <div
-                        className="relative w-20 h-20 rounded-lg overflow-hidden shadow-2xl cursor-pointer"
-                        onClick={() => playTrack(`spotify:track:${track.id}`)}
-                    >
-                        <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Play className="w-8 h-8 text-[#b0fb5d] fill-[#b0fb5d]" />
-                        </div>
-                    </div>
-                    <div className="min-w-0">
-                        <h3 className="font-bold text-lg truncate pr-4">{track.title}</h3>
-                        <p className="text-[#b0fb5d] text-sm font-medium">{track.artist}</p>
-                        <p className="text-gray-500 text-xs mt-1">{track.album}</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <LikeButton trackId={track.id} />
-                    <AddToPlaylistButton trackId={track.id} />
-                </div>
-            </GlassCard>
-        </motion.div>
-    )
+    return <DiscoverUI initialTracks={initialTracks} />;
 }

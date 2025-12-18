@@ -26,7 +26,6 @@ export function CreatePlaylistModal({ isOpen, onClose, onCreated }: CreatePlayli
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, description, isPublic }),
-                credentials: 'include',
             });
 
             if (res.ok) {
