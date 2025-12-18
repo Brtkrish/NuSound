@@ -22,7 +22,6 @@ export async function GET(request: Request) {
         }
 
         // 1. Determine redirect destination
-        // Use origin of current request to ensure cookie domain matches perfectly
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
         const cleanAppUrl = appUrl.startsWith('http') ? appUrl.replace(/\/$/, '') : `https://${appUrl.replace(/\/$/, '')}`;
 
@@ -30,11 +29,8 @@ export async function GET(request: Request) {
         const cookieStore = await cookies();
         const maxAge = Number(expires_in) || 3600;
 
-        // Base64 encode the token to ensure zero special characters break the header
-        const encodedToken = Buffer.from(access_token).toString('base64');
-
-        // Rename the cookie to avoid any potential "reserved name" filters
-        cookieStore.set('sp_token', encodedToken, {
+        // 🟢 FIX: Save raw token. Do NOT Base64 encode (it causes size bloat > 4096 bytes)
+        cookieStore.set('sp_token', access_token, {
             httpOnly: true,
             secure: true,
             path: '/',
@@ -56,7 +52,8 @@ export async function GET(request: Request) {
             maxAge: 3600,
         });
 
-        // HTML payload for "Safe Redirect"
+        // HTML payload for "Safe Redirect" technique
+        // (Ensures cookies are set before the redirect happens)
         const html = `
             <!DOCTYPE html>
             <html>
@@ -80,7 +77,7 @@ export async function GET(request: Request) {
         `;
 
         return new NextResponse(html, {
-            status: 200, // 200 OK is much more reliable for Set-Cookie than 302
+            status: 200,
             headers: {
                 'Content-Type': 'text/html',
                 'Cache-Control': 'no-store, max-age=0',
