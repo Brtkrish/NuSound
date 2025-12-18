@@ -78,7 +78,7 @@ export const Sidebar = () => {
             {/* Mobile Menu Button */}
             <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden fixed top-4 left-4 z-[60] p-3 glass-panel rounded-xl"
+                className="md:hidden fixed top-4 right-4 z-[70] p-3 glass-panel rounded-xl shadow-2xl active:scale-95 transition-transform"
             >
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

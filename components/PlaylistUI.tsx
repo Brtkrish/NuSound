@@ -29,13 +29,13 @@ export function PlaylistUI({ tracks }: PlaylistUIProps) {
                 Back to Library
             </Link>
 
-            <div className="flex items-end gap-6 mb-12">
-                <div className="w-52 h-52 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-2xl">
-                    <Music2 className="w-24 h-24 text-gray-600" />
+            <div className="flex flex-col md:flex-row items-center md:items-end gap-6 mb-12">
+                <div className="w-40 h-40 md:w-52 md:h-52 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-2xl flex-shrink-0">
+                    <Music2 className="w-20 h-20 md:w-24 md:h-24 text-gray-600" />
                 </div>
-                <div>
+                <div className="text-center md:text-left">
                     <p className="text-sm text-gray-400 mb-2">PLAYLIST</p>
-                    <h1 className="text-5xl md:text-7xl font-bold mb-4">Playlist</h1>
+                    <h1 className="text-4xl md:text-7xl font-bold mb-4">Playlist</h1>
                     <p className="text-gray-300">{tracks.length} songs</p>
                 </div>
             </div>

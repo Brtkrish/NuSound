@@ -52,7 +52,7 @@ export function DiscoverUI({ initialTracks }: DiscoverUIProps) {
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {tracks.map((track, index) => (
                     <RecommendationCard key={track.id} track={track} index={index} />
                 ))}
@@ -70,10 +70,10 @@ function RecommendationCard({ track, index }: { track: Track; index: number }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
         >
-            <GlassCard className="group flex items-center justify-between hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-4">
+            <GlassCard className="group flex items-center justify-between hover:bg-white/10 transition-colors p-3 md:p-4">
+                <div className="flex items-center gap-4 min-w-0">
                     <div
-                        className="relative w-20 h-20 rounded-lg overflow-hidden shadow-2xl cursor-pointer"
+                        className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden shadow-2xl cursor-pointer flex-shrink-0"
                         onClick={() => playTrack(`spotify:track:${track.id}`)}
                     >
                         <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
@@ -82,13 +82,13 @@ function RecommendationCard({ track, index }: { track: Track; index: number }) {
                         </div>
                     </div>
                     <div className="min-w-0">
-                        <h3 className="font-bold text-lg truncate pr-4">{track.title}</h3>
-                        <p className="text-[#b0fb5d] text-sm font-medium">{track.artist}</p>
-                        <p className="text-gray-500 text-xs mt-1">{track.album}</p>
+                        <h3 className="font-bold text-base md:text-lg truncate pr-2">{track.title}</h3>
+                        <p className="text-[#b0fb5d] text-xs md:text-sm font-medium truncate">{track.artist}</p>
+                        <p className="text-gray-500 text-[10px] md:text-xs mt-1 truncate">{track.album}</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 md:gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <LikeButton trackId={track.id} />
                     <AddToPlaylistButton trackId={track.id} />
                 </div>

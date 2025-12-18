@@ -5,6 +5,7 @@ import "./globals.css";
 import { PlayerProvider } from "@/components/PlayerProvider";
 import PlayerUI from "@/components/PlayerUI";
 import { cookies } from 'next/headers';
+import { getSessionToken } from "@/lib/spotify-server";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,8 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('access_token')?.value;
+  const token = await getSessionToken();
 
   return (
     <html lang="en">
