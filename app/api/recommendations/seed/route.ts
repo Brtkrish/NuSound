@@ -21,15 +21,29 @@ export async function GET(request: Request) {
     try {
         console.log('Fetching recommendations for seeds:', { trackId, artistId });
         const seedArtists = artistId ? [artistId] : [];
-        const recRes = await getRecommendationsBySeeds(access_token, [trackId], seedArtists, 10);
+        let recRes = await getRecommendationsBySeeds(access_token, [trackId], seedArtists, 10);
 
-        if (!recRes.ok) {
-            const errorText = await recRes.text();
-            console.error('Spotify Recommendations API Error:', recRes.status, errorText);
+        let recData = null;
+        if (recRes.ok) {
+            recData = await recRes.json();
+        }
+
+        // Fallback: If no tracks found with both seeds, try with just trackId
+        if ((!recData || !recData.tracks || recData.tracks.length === 0) && artistId) {
+            console.log('No results with track + artist seeds. Retrying with only trackId...');
+            const fallbackRes = await getRecommendationsBySeeds(access_token, [trackId], [], 10);
+            if (fallbackRes.ok) {
+                recData = await fallbackRes.json();
+            } else {
+                console.error('Fallback Spotify Recommendations API Error:', fallbackRes.status);
+            }
+        }
+
+        if (!recData) {
+            console.error('Spotify Recommendations API failed or returned no data');
             return NextResponse.json({ error: 'Failed to fetch recommendations' }, { status: recRes.status });
         }
 
-        const recData = await recRes.json();
         console.log('Recommendations received count:', recData.tracks?.length || 0);
 
         const formatTrack = (t: any) => ({

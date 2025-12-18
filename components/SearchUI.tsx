@@ -265,8 +265,20 @@ function ExpandableTrackCard({ track, index, onPlay }: { track: Track; index: nu
                                         ))}
                                     </div>
                                 ) : recommendations.length === 0 ? (
-                                    <div className="text-center py-4 bg-white/5 rounded-xl border border-dashed border-white/10">
-                                        <p className="text-gray-500 text-sm italic">NuSound couldn't find similar vibes for this track yet.</p>
+                                    <div className="text-center py-6 bg-white/5 rounded-2xl border border-dashed border-white/10 flex flex-col items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                                            <RefreshCw size={20} className="text-gray-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-400 text-sm font-medium">No similar vibes found yet</p>
+                                            <p className="text-gray-500 text-xs mt-1">We couldn't find matching tracks for this specific sound.</p>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); fetchRecommendations(); }}
+                                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all text-gray-300 hover:text-white"
+                                        >
+                                            Retry Search
+                                        </button>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
