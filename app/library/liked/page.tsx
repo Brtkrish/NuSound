@@ -2,6 +2,7 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LikedSongsUI } from '@/components/LikedSongsUI';
+import { getLikedTracksAction } from '@/lib/spotify-server';
 
 export default async function LikedSongsPage() {
     const cookieStore = await cookies();
@@ -11,17 +12,9 @@ export default async function LikedSongsPage() {
         redirect('/api/auth/login');
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-    let tracks = [];
+    let tracks: any[] = [];
     try {
-        const res = await fetch(`${appUrl}/api/library`, {
-            cache: 'no-store'
-        });
-
-        if (res.ok) {
-            tracks = await res.json();
-        }
+        tracks = await getLikedTracksAction(access_token);
     } catch (e) {
         console.error("Failed to fetch server-side liked songs:", e);
     }

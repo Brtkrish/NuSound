@@ -2,6 +2,7 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ProfileUI } from '@/components/ProfileUI';
+import { getProfileAction } from '@/lib/spotify-server';
 
 export default async function ProfilePage() {
     const cookieStore = await cookies();
@@ -11,23 +12,15 @@ export default async function ProfilePage() {
         redirect('/api/auth/login');
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
     let profile = null;
-    let topArtists = [];
-    let topTracks = [];
+    let topArtists: any[] = [];
+    let topTracks: any[] = [];
 
     try {
-        const res = await fetch(`${appUrl}/api/profile`, {
-            cache: 'no-store'
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            profile = data.profile;
-            topArtists = data.topArtists;
-            topTracks = data.topTracks;
-        }
+        const data = await getProfileAction(access_token);
+        profile = data.profile;
+        topArtists = data.topArtists;
+        topTracks = data.topTracks;
     } catch (e) {
         console.error("Failed to fetch server-side profile:", e);
     }

@@ -1,8 +1,8 @@
+import { getLikedTracksAction } from '@/lib/spotify-server';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
-import { getSavedTracks } from '@/lib/spotify';
 
 export async function GET(request: Request) {
     const cookieStore = await cookies();
@@ -13,19 +13,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        // Fetch only 50 liked songs for performance
-        const res = await getSavedTracks(access_token, 50, 0);
-        const data = await res.json();
-
-        const tracks = (data.items || []).map((item: any) => ({
-            id: item.track.id,
-            title: item.track.name,
-            artist: item.track.artists.map((a: any) => a.name).join(', '),
-            album: item.track.album.name,
-            coverUrl: item.track.album.images[0]?.url || '',
-            addedAt: item.added_at,
-        }));
-
+        const tracks = await getLikedTracksAction(access_token, 50);
         return NextResponse.json(tracks);
     } catch (error) {
         console.error('Library fetch error:', error);
