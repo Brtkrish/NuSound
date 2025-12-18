@@ -7,10 +7,16 @@ export async function getSessionToken() {
 
     // 1. Get Session ID
     const sessionId = cookieStore.get('session_id')?.value;
-    if (!sessionId) return null;
+    if (!sessionId) {
+        console.log('No session_id cookie found');
+        return null;
+    }
 
     // 2. Connect to Redis
-    if (!process.env.REDIS_URL) return null;
+    if (!process.env.REDIS_URL) {
+        console.log('REDIS_URL not configured');
+        return null;
+    }
 
     try {
         const redis = new Redis(process.env.REDIS_URL);
@@ -20,6 +26,8 @@ export async function getSessionToken() {
         if (rawSession) {
             const session = JSON.parse(rawSession);
             return session.access_token;
+        } else {
+            console.log('Session not found in Redis for id:', sessionId);
         }
     } catch (error) {
         console.error("Redis Read Error:", error);

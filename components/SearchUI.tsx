@@ -21,7 +21,9 @@ export function SearchUI() {
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [results, setResults] = useState<{ tracks: Track[], related: Track[] } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { playTrack } = usePlayer();
+
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -40,18 +42,24 @@ export function SearchUI() {
 
     const performSearch = async (q: string) => {
         setLoading(true);
+        setError(null);
         try {
             const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
             if (res.ok) {
                 const data = await res.json();
                 setResults(data);
+            } else {
+                const errorData = await res.json();
+                setError(errorData.error || 'Failed to search');
             }
         } catch (error) {
             console.error('Search failed:', error);
+            setError('Something went wrong');
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="p-8 md:p-12 max-w-7xl mx-auto min-h-screen pb-32">
@@ -85,7 +93,21 @@ export function SearchUI() {
 
             {/* Content */}
             <AnimatePresence mode="wait">
-                {!results && !loading && (
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl mb-8 flex items-center gap-3"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                            !
+                        </div>
+                        <p>{error}</p>
+                    </motion.div>
+                )}
+
+                {!results && !loading && !error && (
+
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
