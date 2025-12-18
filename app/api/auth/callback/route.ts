@@ -11,34 +11,41 @@ export async function GET(request: Request) {
 
     try {
         const tokenResponse = await getAccessToken(code);
-        console.log("Token Response:", tokenResponse);
         const { access_token, refresh_token, expires_in } = tokenResponse;
 
         if (!access_token) {
+            console.error("Token exchange failed:", tokenResponse);
             return NextResponse.json(tokenResponse, { status: 400 });
         }
 
-        // Create the response object (FAIL LOUD if env is missing)
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        // 1. Determine app URL with protocol safety
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-        if (!appUrl) {
-            throw new Error("NEXT_PUBLIC_APP_URL is not defined");
+        // Ensure appUrl has protocol
+        if (!appUrl.startsWith('http')) {
+            appUrl = `https://${appUrl}`;
         }
 
-        const response = NextResponse.redirect(`${appUrl}/`);
+        // Remove trailing slash to prevent double slashes
+        const cleanAppUrl = appUrl.replace(/\/$/, '');
+        console.log(`Redirecting to: ${cleanAppUrl}/ after successful login`);
 
+        const response = NextResponse.redirect(`${cleanAppUrl}/`);
+
+        // 2. Set cookies with broad compatibility
+        // SameSite=Lax is standard for first-party session cookies
+        // SameSite=None is often blocked by browsers unless specifically needed for cross-site
         response.cookies.set('access_token', access_token, {
             httpOnly: true,
-            secure: true,
+            secure: true, // Required for sameSite: 'none' or 'lax' over HTTPS
             path: '/',
-            maxAge: expires_in,
-            sameSite: 'none',
+            maxAge: Number(expires_in) || 3600,
+            sameSite: 'lax',
         });
-
-        // In a real app we'd also store the refresh token securely
 
         return response;
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to authenticate' }, { status: 500 });
+        console.error("Callback error:", error);
+        return NextResponse.json({ error: 'Failed to authenticate', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }

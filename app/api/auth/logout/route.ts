@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    if (!appUrl) {
-        throw new Error("NEXT_PUBLIC_APP_URL is not defined");
+    if (!appUrl.startsWith('http')) {
+        appUrl = `https://${appUrl}`;
     }
 
-    const response = NextResponse.redirect(`${appUrl}/`);
+    const cleanAppUrl = appUrl.replace(/\/$/, '');
+    const response = NextResponse.redirect(`${cleanAppUrl}/`);
 
     response.cookies.set("access_token", "", {
         httpOnly: true,
         secure: true,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
         maxAge: 0,
     });
