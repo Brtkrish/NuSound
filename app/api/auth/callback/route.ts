@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getAccessToken } from '@/lib/spotify';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import Redis from 'ioredis'; // 🟢 CHANGED
+import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
@@ -18,24 +18,23 @@ export async function GET(request: Request) {
 
         if (!access_token) {
             console.error("Token exchange failed:", tokenResponse);
-            return NextResponse.json(tokenResponse, { status: 400 });
+            return NextResponse.json({ error: 'Authentication failed' }, { status: 400 });
         }
 
         // 1. Generate Session ID
         const sessionId = uuidv4();
 
-        // 2. Connect to Redis using the REDIS_URL you already have
+        // 2. Connect to Redis
         if (!process.env.REDIS_URL) {
-            throw new Error("REDIS_URL is missing from Environment Variables");
+            console.error("REDIS_URL is missing");
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
+
         const redis = new Redis(process.env.REDIS_URL);
 
-        // 3. Save Session
+        // 3. Save Session (Securely)
         const sessionData = JSON.stringify({ access_token, refresh_token });
-        // 'EX' means expire in seconds
         await redis.set(`session:${sessionId}`, sessionData, 'EX', expires_in || 3600);
-
-        // Close connection to keep Vercel happy
         await redis.quit();
 
         // 4. Save Cookie
@@ -51,22 +50,20 @@ export async function GET(request: Request) {
             sameSite: 'lax',
         });
 
-        // 5. Redirect
+        // 5. Redirect to Home
         const html = `
             <!DOCTYPE html>
             <html>
                 <head><meta http-equiv="refresh" content="0;url=${cleanAppUrl}/"></head>
-                <body style="background:#000;color:#fff;"><p>Login successful...</p></body>
+                <body style="background:#000;color:#fff;"></body>
             </html>
         `;
 
         return new NextResponse(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
 
-    } catch (error: any) {
-        console.error("Redis Auth Error:", error);
-        return NextResponse.json({
-            error: 'Auth failed',
-            details: error.message
-        }, { status: 500 });
+    } catch (error) {
+        console.error("Auth Error:", error);
+        // Generic error for the user, detailed log for you
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
