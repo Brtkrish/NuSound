@@ -19,8 +19,14 @@ export async function GET(request: Request) {
             return NextResponse.json(tokenResponse, { status: 400 });
         }
 
-        // Create the response object
-        const response = NextResponse.redirect(new URL('/', request.url));
+        // Create the response object (FAIL LOUD if env is missing)
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+        if (!appUrl) {
+            throw new Error("NEXT_PUBLIC_APP_URL is not defined");
+        }
+
+        const response = NextResponse.redirect(`${appUrl}/`);
 
         // Set cookies
         const cookieString = serialize('access_token', access_token, {
